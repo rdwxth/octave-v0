@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { SpotifyClone } from "@/components/spotify-clone"
+import { SpotifyClone } from "@/components/main"
 
 export const metadata: Metadata = {
   title: 'Streamflix Music',
