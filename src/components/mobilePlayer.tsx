@@ -416,7 +416,6 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
     { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
     { icon: Plus, label: 'Add to', onClick: () => console.log('Add to playlist') },
     { icon: Download, label: 'Download', onClick: () => console.log('Download') },
-    { icon: Share2, label: 'Share', onClick: () => console.log('Share') },
     { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
     { icon: Radio, label: 'Radio', onClick: () => console.log('Start radio') },
     { icon: Mic2, label: 'Sing', onClick: () => console.log('Start karaoke') },
