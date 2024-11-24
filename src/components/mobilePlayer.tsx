@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +10,8 @@ import {
   Share, Star,
   RefreshCw, Flag, AlertCircle, Lock, UserPlus
 } from 'lucide-react';
+import { useMemo } from 'react';
+
 
 // Types and Interfaces
 interface Artist {
@@ -122,12 +123,13 @@ const QualityBadge: React.FC<{ quality: AudioQuality; onClick: () => void }> = (
       onClick={onClick}
     >
       <Icon className="w-3 h-3 inline mr-1" />
-      <span>{quality}</span>
+      {quality}
     </motion.button>
   );
 };
 
 const ActionButton: React.FC<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: React.FC<any>;
   label: string;
   active?: boolean;
@@ -262,16 +264,67 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   };
 
   // More options items
-  const moreOptionsItems = [
-    { icon: Ban, label: "Don't play", action: () => console.log('Blocked') },
-    { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
-    { icon: Library, label: 'Add to Playlist', action: () => console.log('Added to playlist') },
-    { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
-    { icon: Share, label: 'Share', action: () => console.log('Shared') },
-    { icon: Flag, label: 'Report', action: () => console.log('Reported') },
-    { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
-    { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
-  ];
+  const moreOptionsItems = useMemo(
+    () => [
+      { icon: Ban, label: "Don't play", action: () => console.log('Blocked') },
+      { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
+      { icon: Library, label: 'Add to Playlist', action: () => console.log('Added to playlist') },
+      { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
+      { icon: Share, label: 'Share', action: () => console.log('Shared') },
+      { icon: Flag, label: 'Report', action: () => console.log('Reported') },
+      { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
+      { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
+    ],
+    [setShowAudioMenu] // Dependencies
+  );
+
+  // Responsive action buttons
+  const allActionButtons = useMemo(
+    () => [
+      { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
+      { icon: Plus, label: 'Add to', onClick: () => console.log('Add to playlist') },
+      { icon: Download, label: 'Download', onClick: () => console.log('Download') },
+      { icon: Share2, label: 'Share', onClick: () => console.log('Share') },
+      { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
+      { icon: Radio, label: 'Radio', onClick: () => console.log('Start radio') },
+      { icon: Mic2, label: 'Sing', onClick: () => console.log('Start karaoke') },
+      { icon: ListMusic, label: 'Queue', onClick: () => setShowQueue(true) },
+    ],
+    [isLiked, toggleLike, showLyrics, toggleLyricsView, setShowQueue] // Dependencies
+  );
+
+  // Determine how many action buttons to show based on screen width
+  const [visibleActionButtons, setVisibleActionButtons] = useState(allActionButtons);
+  const [additionalOptions, setAdditionalOptions] = useState(moreOptionsItems);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const screenWidth = window.innerWidth;
+
+      let buttonsToShow = 4; // Default number of buttons to show
+      if (screenWidth < 350) {
+        buttonsToShow = 2;
+      } else if (screenWidth < 400) {
+        buttonsToShow = 3;
+      } else if (screenWidth >= 600) {
+        buttonsToShow = allActionButtons.length; // Show all buttons on larger screens
+      }
+
+      setVisibleActionButtons(allActionButtons.slice(0, buttonsToShow));
+
+      // Move the rest of the buttons to the "More Options" menu
+      const extraButtons = allActionButtons.slice(buttonsToShow).map((btn) => ({
+        icon: btn.icon,
+        label: btn.label,
+        action: btn.onClick,
+      }));
+      setAdditionalOptions([...moreOptionsItems, ...extraButtons]);
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize); // Add event listener
+    return () => window.removeEventListener('resize', handleResize); // Cleanup
+  }, [allActionButtons, moreOptionsItems]);
 
   return (
     <div className="fixed bottom-16 left-0 right-0 z-50">
@@ -395,13 +448,6 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                 <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
                   <Cast className="w-5 h-5 text-white/60" />
                 </button>
-
-                <button
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={() => setShowMoreOptions(true)}
-                >
-                  <MoreHorizontal className="w-5 h-5 text-white/60" />
-                </button>
               </div>
             </div>
 
@@ -513,45 +559,26 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                   </button>
                 </div>
 
-                {/* Quick Actions */}
+                {/* Responsive Quick Actions */}
                 <div className="w-full grid grid-cols-4 gap-4 mb-6">
-                  <ActionButton icon={Heart} label="Like" active={isLiked} onClick={toggleLike} />
-                  <ActionButton
-                    icon={Plus}
-                    label="Add to"
-                    onClick={() => console.log('Add to playlist')}
-                  />
-                  <ActionButton
-                    icon={Download}
-                    label="Download"
-                    onClick={() => console.log('Download')}
-                  />
-                  <ActionButton icon={Share2} label="Share" onClick={() => console.log('Share')} />
-                </div>
+                  {visibleActionButtons.map((btn, index) => (
+                    <ActionButton
+                      key={index}
+                      icon={btn.icon}
+                      label={btn.label}
+                      active={btn.active}
+                      onClick={btn.onClick}
+                    />
+                  ))}
 
-                {/* Additional Actions */}
-                <div className="w-full grid grid-cols-4 gap-4">
-                  <ActionButton
-                    icon={Music}
-                    label="Lyrics"
-                    active={showLyrics}
-                    onClick={toggleLyricsView}
-                  />
-                  <ActionButton
-                    icon={Radio}
-                    label="Radio"
-                    onClick={() => console.log('Start radio')}
-                  />
-                  <ActionButton
-                    icon={Mic2}
-                    label="Sing"
-                    onClick={() => console.log('Start karaoke')}
-                  />
-                  <ActionButton
-                    icon={ListMusic}
-                    label="Queue"
-                    onClick={() => setShowQueue(true)}
-                  />
+                  {/* If there are hidden buttons, show the More Options button */}
+                  {visibleActionButtons.length < allActionButtons.length && (
+                    <ActionButton
+                      icon={MoreHorizontal}
+                      label="More"
+                      onClick={() => setShowMoreOptions(true)}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -567,7 +594,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                   onClick={() => setShowMoreOptions(false)} // Close modal on background click
                 >
                   <motion.div
-                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl"
+                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl max-h-[80%] overflow-y-auto"
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
@@ -577,7 +604,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                       <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
 
                       <div className="grid grid-cols-4 gap-4 mb-8">
-                        {moreOptionsItems.map((item, index) => (
+                        {additionalOptions.map((item, index) => (
                           <ActionButton
                             key={index}
                             icon={item.icon}
