@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+// Desktop (main.tsx)
 'use client';
 
 import React, {
