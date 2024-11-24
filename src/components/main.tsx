@@ -9,8 +9,9 @@ import React, {
   FormEvent,
   ChangeEvent,
   MouseEvent,
-  TouchEvent,
 } from 'react';
+import MobilePlayer from './mobilePlayer';
+
 import {
   Home,
   Search,
@@ -30,7 +31,6 @@ import {
   User,
   Download,
   Heart,
-  List,
   Music,
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
@@ -96,7 +96,6 @@ export function SpotifyClone() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [queue, setQueue] = useState<Track[]>([]);
   const [previousTracks, setPreviousTracks] = useState<Track[]>([]);
-  const [miniplayerExpanded, setMiniplayerExpanded] = useState<boolean>(false);
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(1);
   const [seekPosition, setSeekPosition] = useState<number>(0);
@@ -121,9 +120,6 @@ export function SpotifyClone() {
   const [showLyrics, setShowLyrics] = useState<boolean>(false);
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [currentLyricIndex, setCurrentLyricIndex] = useState<number>(0);
-  const [showMobileQueue, setShowMobileQueue] = useState<boolean>(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const preloadedAudios = useRef<HTMLAudioElement[]>([new Audio(), new Audio(), new Audio()]);
@@ -728,33 +724,7 @@ export function SpotifyClone() {
     setShowLyrics(!showLyrics);
   };
 
-  const toggleMobileQueue = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowMobileQueue(!showMobileQueue);
-  };
-
-  const handleTouchStart = (e: TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-    if (isLeftSwipe) {
-      skipTrack();
-    }
-    if (isRightSwipe) {
-      previousTrack();
-    }
-    setTouchStart(null);
-    setTouchEnd(null);
-  };
+  
 
   useEffect(() => {
     const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
@@ -1002,7 +972,7 @@ export function SpotifyClone() {
           </button>
         </footer>
         {/* Mobile Miniplayer */}
-        {currentTrack && (
+        {/* {currentTrack && (
           <div
             className={`fixed bottom-16 left-0 right-0 bg-black rounded-lg p-4 transition-all duration-300 ${
               miniplayerExpanded ? 'h-screen' : 'h-20'
@@ -1163,7 +1133,28 @@ export function SpotifyClone() {
               </div>
             )}
           </div>
-        )}
+        )} */}
+        {currentTrack && (
+  <MobilePlayer
+    currentTrack={currentTrack}
+    isPlaying={isPlaying}
+    togglePlay={togglePlay}
+    skipTrack={skipTrack}
+    previousTrack={previousTrack}
+    seekPosition={seekPosition}
+    duration={duration}
+    handleSeek={handleSeek}
+    isLiked={isLiked}
+    toggleLike={toggleLike}
+    lyrics={lyrics}
+    currentLyricIndex={currentLyricIndex}
+    queue={queue}
+    shuffleOn={shuffleOn}
+    shuffleQueue={shuffleQueue}
+    showLyrics={showLyrics}
+    toggleLyricsView={toggleLyricsView}
+  />
+)}
       </div>
       {/* Desktop View */}
       <div className="hidden md:flex flex-1 gap-2 p-2 overflow-y-auto custom-scrollbar">
