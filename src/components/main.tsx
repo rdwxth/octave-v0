@@ -426,15 +426,22 @@ export function SpotifyClone() {
     setSeekPosition(audioRef.current.currentTime);
     localStorage.setItem('seekPosition', audioRef.current.currentTime.toString());
   }, []);
-
+  
+  // Update duration when metadata is loaded
   const handleLoadedMetadata = useCallback(() => {
     setDuration(audioRef.current.duration);
   }, []);
 
-  const handleSeek = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleSeek = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setSeekPosition(time);
+    }
+  };
+
+  const handleSeekInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(e.target.value);
-    audioRef.current.currentTime = newTime;
-    setSeekPosition(newTime);
+    handleSeek(newTime);
   };
 
   const handleVolumeChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1144,7 +1151,7 @@ export function SpotifyClone() {
     previousTrack={previousTrack}
     seekPosition={seekPosition}
     duration={duration}
-    handleSeek={handleSeek}
+    handleSeek={handleSeek} // Correctly typed
     isLiked={isLiked}
     toggleLike={toggleLike}
     lyrics={lyrics}
@@ -1486,18 +1493,18 @@ export function SpotifyClone() {
                   />
                 </button>
               </div>
-              <div className="w-full flex items-center space-x-2">
-                <span className="text-xs">{formatTime(seekPosition)}</span>
-                <input
-                  type="range"
-                  min="0"
-                  max={duration}
-                  value={seekPosition}
-                  onChange={handleSeek}
-                  className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
-                />
-                <span className="text-xs">{formatTime(duration)}</span>
-              </div>
+                <div className="w-full flex items-center space-x-2">
+    <span className="text-xs">{formatTime(seekPosition)}</span>
+    <input
+      type="range"
+      min="0"
+      max={duration}
+      value={seekPosition}
+      onChange={handleSeekInputChange} // Use the new handler
+      className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
+    />
+    <span className="text-xs">{formatTime(duration)}</span>
+  </div>
             </div>
             {/* Volume and Queue */}
             <div className="flex items-center space-x-4">

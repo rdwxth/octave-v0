@@ -1,19 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, SVGProps } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import {
   Heart, Play, Pause, SkipBack, SkipForward, ChevronDown,
   Music, Download, Share2, Radio, Plus, Library,
   Shuffle, Repeat, Repeat1, Mic2, ListMusic,
-  ArrowLeft, MoreHorizontal,
-  Ban, Bluetooth, Cast, Crown, Settings,
-  Share, Star,
-  RefreshCw, Flag, AlertCircle, Lock, UserPlus
+  ArrowLeft, MoreHorizontal, Cast, Airplay,
+  Ban, Crown, Settings,
+  Share, Star, RefreshCw, Flag, AlertCircle, Lock, UserPlus
 } from 'lucide-react';
-import { useMemo } from 'react';
 
-
-// Types and Interfaces
+// Original interfaces
 interface Artist {
   name: string;
 }
@@ -46,7 +44,7 @@ interface MobilePlayerProps {
   previousTrack: () => void;
   seekPosition: number;
   duration: number;
-  handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleSeek: (time: number) => void; 
   isLiked: boolean;
   toggleLike: () => void;
   lyrics: Lyric[];
@@ -58,49 +56,119 @@ interface MobilePlayerProps {
   queue: Track[];
 }
 
-// Helper Components
-const WaveSeekbar: React.FC<{ progress: number; handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ progress, handleSeek }) => (
-  <div className="relative w-full h-1.5 bg-white/10 rounded-full overflow-hidden group">
-    <motion.div
-      className="absolute inset-y-0 left-0 bg-gradient-to-r from-white/60 to-white/80"
-      style={{ width: `${progress * 100}%` }}
-    >
-      <motion.div
-        className="absolute inset-0"
-        animate={{
-          backgroundPosition: ['0% 0%', '100% 0%'],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: 'linear',
-        }}
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.3) 100%)',
-          backgroundSize: '200% 100%',
-        }}
-      />
-    </motion.div>
-    <div className="absolute -top-2 -bottom-2 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.001"
-        value={progress}
-        onChange={handleSeek}
-        className="w-full h-full appearance-none bg-transparent cursor-pointer"
-        style={{
-          WebkitAppearance: 'none',
-          background: 'transparent',
-        }}
-      />
-    </div>
-  </div>
-);
+interface SeekbarProps {
+  progress: number;
+  handleSeek: (time: number) => void;
+  isMiniplayer?: boolean;
+  duration: number;
+}
 
-const QualityBadge: React.FC<{ quality: AudioQuality; onClick: () => void }> = ({ quality, onClick }) => {
+
+// mobilePlayer.tsx
+
+const Seekbar: React.FC<SeekbarProps> = ({
+  progress,
+  handleSeek,
+  isMiniplayer = false,
+  duration,
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [localProgress, setLocalProgress] = useState(progress);
+  const progressRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isDragging) {
+      setLocalProgress(progress);
+    }
+  }, [progress, isDragging]);
+
+  const calculateProgress = (clientX: number): number | null => {
+    if (!progressRef.current) return null;
+    const rect = progressRef.current.getBoundingClientRect();
+    const newProgress = (clientX - rect.left) / rect.width;
+    return Math.min(1, Math.max(0, newProgress));
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      const newProgress = calculateProgress(e.clientX);
+      if (newProgress !== null) {
+        setLocalProgress(newProgress);
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      handleSeek(localProgress * duration);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (isDragging) {
+      const touch = e.touches[0];
+      const newProgress = calculateProgress(touch.clientX);
+      if (newProgress !== null) {
+        setLocalProgress(newProgress);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      handleSeek(localProgress * duration);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    }
+  };
+
+  const handleInteractionStart = (
+    e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
+  ) => {
+    setIsDragging(true);
+    let clientX: number;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+    } else {
+      clientX = e.clientX;
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    const newProgress = calculateProgress(clientX);
+    if (newProgress !== null) {
+      setLocalProgress(newProgress);
+    }
+  };
+
+  return (
+    <div
+      ref={progressRef}
+      className={`relative w-full ${isMiniplayer ? 'h-1' : 'h-2'} cursor-pointer`}
+      onMouseDown={handleInteractionStart}
+      onTouchStart={handleInteractionStart}
+    >
+      <div className="absolute inset-0 bg-gray-700 rounded-full">
+        <motion.div
+          className="h-full bg-green-500 rounded-full"
+          style={{ width: `${localProgress * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+
+// Enhanced QualityBadge with perfectly centered icons
+const QualityBadge: React.FC<{
+  quality: AudioQuality;
+  onClick: () => void;
+}> = ({ quality, onClick }) => {
   const icons = {
     MAX: Crown,
     HIGH: Star,
@@ -116,26 +184,32 @@ const QualityBadge: React.FC<{ quality: AudioQuality; onClick: () => void }> = (
   };
 
   const Icon = icons[quality];
+
   return (
     <motion.button
-      className={`px-4 py-1 rounded-full text-xs font-medium ${qualityColors[quality]} text-white`}
+      className={`px-4 py-1 rounded-full text-xs font-medium ${qualityColors[quality]} text-white inline-flex items-center justify-center space-x-1.5`}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
     >
-      <Icon className="w-3 h-3 inline mr-1" />
-      {quality}
+      <Icon className="w-3 h-3" />
+      <span>{quality}</span>
     </motion.button>
   );
 };
 
+// Enhanced ActionButton with smooth animations
 const ActionButton: React.FC<{
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon: React.FC<any>;
+  icon: React.FC<SVGProps<SVGSVGElement>>;
   label: string;
   active?: boolean;
   onClick?: () => void;
 }> = ({ icon: Icon, label, active, onClick }) => (
-  <button className="flex flex-col items-center space-y-1" onClick={onClick}>
+  <motion.button
+    className="flex flex-col items-center space-y-1"
+    onClick={onClick}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+  >
     <div
       className={`w-12 h-12 rounded-full flex items-center justify-center
         ${active ? 'bg-green-500/20 text-green-500' : 'bg-white/10 text-white/60'}
@@ -144,17 +218,9 @@ const ActionButton: React.FC<{
       <Icon className="w-6 h-6" />
     </div>
     <span className="text-xs text-white/60">{label}</span>
-  </button>
+  </motion.button>
 );
 
-const DeviceIndicator: React.FC<{ deviceName: string }> = ({ deviceName }) => (
-  <div className="flex items-center px-3 py-1 rounded-full bg-blue-500/20">
-    <Bluetooth className="w-4 h-4 text-blue-400 mr-2" />
-    <span className="text-sm text-blue-400">{deviceName}</span>
-  </div>
-);
-
-// Main Component
 const MobilePlayer: React.FC<MobilePlayerProps> = ({
   currentTrack,
   isPlaying,
@@ -174,7 +240,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   shuffleQueue,
   queue,
 }) => {
-  // State variables
+  // State management
   const [isExpanded, setIsExpanded] = useState(false);
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('MAX');
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
@@ -182,50 +248,47 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
+  const [connectedDevice] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [textOverflow, setTextOverflow] = useState(false);
+  const [isSmallDevice, setIsSmallDevice] = useState(false);
 
   // Refs
   const playerRef = useRef<HTMLDivElement>(null);
-  const albumRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const miniPlayerRef = useRef<HTMLDivElement>(null);
 
-  // Effects
+  // Motion controls
+  const controls = useAnimation();
+
+  // Effect for viewport size detection
   useEffect(() => {
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.title,
-        artist: currentTrack.artist.name,
-        album: currentTrack.album.title,
-        artwork: [{ src: currentTrack.album.cover_medium, sizes: '512x512', type: 'image/jpeg' }],
-      });
+    const checkViewportSize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setIsSmallDevice(width <= 375 || height <= 667);
+    };
+
+    checkViewportSize();
+    window.addEventListener('resize', checkViewportSize);
+    return () => window.removeEventListener('resize', checkViewportSize);
+  }, []);
+
+  // Effect for text overflow detection
+  useEffect(() => {
+    if (titleRef.current) {
+      setTextOverflow(titleRef.current.scrollWidth > titleRef.current.clientWidth);
     }
-  }, [currentTrack]);
+  }, [currentTrack, isSmallDevice]);
 
-  // Close menus when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        (showMoreOptions || showAudioMenu || showQueue) &&
-        playerRef.current &&
-        !playerRef.current.contains(event.target as Node)
-      ) {
-        setShowMoreOptions(false);
-        setShowAudioMenu(false);
-        setShowQueue(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showMoreOptions, showAudioMenu, showQueue]);
-
-  // Touch handlers
+  // Touch handlers with gesture detection
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart({
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
     });
+    setIsDragging(false);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -233,138 +296,113 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
 
     const xDiff = touchStart.x - e.touches[0].clientX;
     const yDiff = touchStart.y - e.touches[0].clientY;
+    const isHorizontalSwipe = Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > 50;
 
-    if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > 50) {
+    if (isHorizontalSwipe && !isDragging) {
       if (xDiff > 0) {
-        skipTrack();
+        controls.start({ x: '-100%', opacity: 0, transition: { duration: 0.3 } })
+          .then(() => {
+            skipTrack();
+            controls.set({ x: '100%', opacity: 0 });
+            controls.start({ x: 0, opacity: 1, transition: { duration: 0.3 } });
+          });
       } else {
-        previousTrack();
+        controls.start({ x: '100%', opacity: 0, transition: { duration: 0.3 } })
+          .then(() => {
+            previousTrack();
+            controls.set({ x: '-100%', opacity: 0 });
+            controls.start({ x: 0, opacity: 1, transition: { duration: 0.3 } });
+          });
       }
       setTouchStart(null);
     }
   };
 
-  const toggleRepeat = () => {
-    setRepeatMode((current) => {
-      switch (current) {
-        case 'off':
-          return 'all';
-        case 'all':
-          return 'one';
-        default:
-          return 'off';
-      }
-    });
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setTouchStart(null);
   };
 
+  // Format time helper
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // More options items
-  const moreOptionsItems = useMemo(
-    () => [
-      { icon: Ban, label: "Don't play", action: () => console.log('Blocked') },
-      { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
-      { icon: Library, label: 'Add to Playlist', action: () => console.log('Added to playlist') },
-      { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
-      { icon: Share, label: 'Share', action: () => console.log('Shared') },
-      { icon: Flag, label: 'Report', action: () => console.log('Reported') },
-      { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
-      { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
-    ],
-    [setShowAudioMenu] // Dependencies
-  );
+  // Action items
+  const moreOptionsItems = [
+    { icon: Ban, label: "Don't play", action: () => console.log('Blocked') },
+    { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
+    { icon: Library, label: 'Add to Playlist', action: () => console.log('Added to playlist') },
+    { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
+    { icon: Share, label: 'Share', action: () => console.log('Shared') },
+    { icon: Flag, label: 'Report', action: () => console.log('Reported') },
+    { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
+    { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
+  ];
 
-  // Responsive action buttons
-  const allActionButtons = useMemo(
-    () => [
-      { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
-      { icon: Plus, label: 'Add to', onClick: () => console.log('Add to playlist') },
-      { icon: Download, label: 'Download', onClick: () => console.log('Download') },
-      { icon: Share2, label: 'Share', onClick: () => console.log('Share') },
-      { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
-      { icon: Radio, label: 'Radio', onClick: () => console.log('Start radio') },
-      { icon: Mic2, label: 'Sing', onClick: () => console.log('Start karaoke') },
-      { icon: ListMusic, label: 'Queue', onClick: () => setShowQueue(true) },
-    ],
-    [isLiked, toggleLike, showLyrics, toggleLyricsView, setShowQueue] // Dependencies
-  );
+  const actionButtons = [
+    { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
+    { icon: Plus, label: 'Add to', onClick: () => console.log('Add to playlist') },
+    { icon: Download, label: 'Download', onClick: () => console.log('Download') },
+    { icon: Share2, label: 'Share', onClick: () => console.log('Share') },
+    { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
+    { icon: Radio, label: 'Radio', onClick: () => console.log('Start radio') },
+    { icon: Mic2, label: 'Sing', onClick: () => console.log('Start karaoke') },
+    { icon: ListMusic, label: 'Queue', onClick: () => setShowQueue(true) },
+  ];
 
-  // Determine how many action buttons to show based on screen width
-  const [visibleActionButtons, setVisibleActionButtons] = useState(allActionButtons);
-  const [additionalOptions, setAdditionalOptions] = useState(moreOptionsItems);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const screenWidth = window.innerWidth;
-
-      let buttonsToShow = 4; // Default number of buttons to show
-      if (screenWidth < 350) {
-        buttonsToShow = 2;
-      } else if (screenWidth < 400) {
-        buttonsToShow = 3;
-      } else if (screenWidth >= 600) {
-        buttonsToShow = allActionButtons.length; // Show all buttons on larger screens
-      }
-
-      setVisibleActionButtons(allActionButtons.slice(0, buttonsToShow));
-
-      // Move the rest of the buttons to the "More Options" menu
-      const extraButtons = allActionButtons.slice(buttonsToShow).map((btn) => ({
-        icon: btn.icon,
-        label: btn.label,
-        action: btn.onClick,
-      }));
-      setAdditionalOptions([...moreOptionsItems, ...extraButtons]);
-    };
-
-    handleResize(); // Initial check
-    window.addEventListener('resize', handleResize); // Add event listener
-    return () => window.removeEventListener('resize', handleResize); // Cleanup
-  }, [allActionButtons, moreOptionsItems]);
+  // Get visible action buttons based on screen size
+  const getVisibleActionButtons = () => {
+    if (isSmallDevice) {
+      return actionButtons.slice(0, 3);
+    }
+    return actionButtons.slice(0, 4);
+  };
 
   return (
     <div className="fixed bottom-16 left-0 right-0 z-50">
-      {/* Collapsed Player */}
+      {/* Mini Player */}
       {!isExpanded && (
         <motion.div
-          className="mx-2 rounded-t-xl"
+          ref={miniPlayerRef}
+          className="mx-2 rounded-xl overflow-hidden"
           style={{
-            background: 'rgba(23, 23, 23, 0.6)',
-            backdropFilter: 'blur(30px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-            boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.2)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
           }}
           onClick={() => setIsExpanded(true)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          animate={controls}
         >
-          {/* Mini Player Content */}
           <div className="p-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 flex-1">
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
                 <motion.div
-                  ref={albumRef}
                   className="relative w-12 h-12 rounded-lg overflow-hidden"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
+                  whileHover={{ scale: 1.05 }}
                 >
                   <img
                     src={currentTrack.album.cover_medium}
                     alt={currentTrack.title}
-                    className="w-full h-full object-cover"
                   />
                 </motion.div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">{currentTrack.title}</p>
+                  <div
+                    ref={titleRef}
+                    className="text-white font-medium truncate"
+                  >
+                    {currentTrack.title}
+                  </div>
                   <p className="text-white/60 text-sm truncate">{currentTrack.artist.name}</p>
                 </div>
               </div>
 
-              {/* Updated controls in mini player */}
               <div className="flex items-center space-x-2">
                 <button
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -383,7 +421,11 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                     togglePlay();
                   }}
                 >
-                  {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
+                  {isPlaying ? (
+                    <Pause className="w-5 h-5 text-white" />
+                  ) : (
+                    <Play className="w-5 h-5 text-white" />
+                  )}
                 </button>
 
                 <button
@@ -403,15 +445,23 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                     toggleLike();
                   }}
                 >
-                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-green-500 text-green-500' : 'text-white/60'}`} />
+                  <Heart
+                    className={`w-5 h-5 ${isLiked ? 'fill-green-500 text-green-500' : 'text-white/60'}`}
+                  />
                 </button>
               </div>
             </div>
 
             {/* Mini Progress Bar */}
-            <WaveSeekbar progress={seekPosition / duration} handleSeek={handleSeek} />
-
-            {/* Removed Quality Badge from mini player */}
+            <div className="mt-2">
+            
+<Seekbar
+  progress={seekPosition / duration}
+  handleSeek={handleSeek}
+  duration={duration}
+  isMiniplayer
+/>
+            </div>
           </div>
         </motion.div>
       )}
@@ -423,15 +473,14 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
             ref={playerRef}
             className="fixed inset-0 z-50"
             style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(30px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'rgba(0, 0, 0, 0.92)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
             }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 20 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 300 }}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4">
@@ -442,194 +491,231 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                 <ChevronDown className="w-6 h-6 text-white" />
               </button>
 
-              <div className="flex items-center space-x-3">
-                {connectedDevice && <DeviceIndicator deviceName={connectedDevice} />}
-
+              <div className="flex items-center space-x-2">
                 <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
                   <Cast className="w-5 h-5 text-white/60" />
                 </button>
+                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <Airplay className="w-5 h-5 text-white/60" />
+                </button>
+                <button
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={() => setShowQueue(true)}
+                >
+                  <ListMusic className="w-5 h-5 text-white/60" />
+                </button>
+                {isSmallDevice && (
+                  <button
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                    onClick={() => setShowMoreOptions(true)}
+                  >
+                    <MoreHorizontal className="w-5 h-5 text-white/60" />
+                  </button>
+                )}
               </div>
             </div>
 
-            {showLyrics ? (
-              <div className="px-4 h-[calc(100%-200px)] overflow-y-auto">
-                <div className="flex items-center mb-6">
-                  <button
-                    onClick={toggleLyricsView}
-                    className="hover:bg-white/10 p-2 rounded-full transition-colors"
-                  >
-                    <ArrowLeft className="w-6 h-6 text-white" />
-                  </button>
-                  <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
-                </div>
-                {lyrics.map((lyric, index) => (
-                  <motion.p
-                    key={index}
-                    className={`text-lg mb-6 text-center ${
-                      index === currentLyricIndex ? 'text-white scale-105' : 'text-white/40'
-                    }`}
-                    animate={{
-                      opacity: index === currentLyricIndex ? 1 : 0.4,
-                    }}
-                  >
-                    {lyric.text}
-                  </motion.p>
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 flex flex-col items-center">
-                {/* Album Art */}
-                <motion.div
-                  className="w-64 h-64 relative rounded-2xl overflow-hidden shadow-2xl mb-8"
-                  layoutId="album-art"
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                >
-                  <img
-                    src={currentTrack.album.cover_medium}
-                    alt={currentTrack.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/20" />
-                </motion.div>
-
-                {/* Track Info */}
-                <div className="w-full text-center mb-8">
-                  <h2 className="text-2xl font-bold text-white mb-2">{currentTrack.title}</h2>
-                  <p className="text-white/60">{currentTrack.artist.name}</p>
-                </div>
-
-                {/* Quality Badge */}
-                <QualityBadge quality={audioQuality} onClick={() => setShowAudioMenu(true)} />
-
-                {/* Seekbar and Time */}
-                <div className="w-full mb-8 mt-6">
-                  <WaveSeekbar progress={seekPosition / duration} handleSeek={handleSeek} />
-                  <div className="flex justify-between text-sm text-white/60 mt-2">
-                    <span>{formatTime(seekPosition)}</span>
-                    <span>{formatTime(duration)}</span>
-                  </div>
-                </div>
-
-                {/* Main Controls */}
-                <div className="w-full flex items-center justify-between mb-8">
-                  <button
-                    onClick={shuffleQueue}
-                    className={`p-3 rounded-full transition-colors ${
-                      shuffleOn ? 'text-green-500' : 'text-white/60 hover:bg-white/10'
-                    }`}
-                  >
-                    <Shuffle className="w-6 h-6" />
-                  </button>
-
-                  <div className="flex items-center space-x-8">
+            {/* Main Content */}
+            <div className="px-4 flex flex-col items-center">
+              {showLyrics ? (
+                <div className="h-[calc(100vh-32vh)] overflow-y-auto w-full">
+                  <div className="flex items-center mb-6">
                     <button
-                      className="p-3 hover:bg-white/10 rounded-full transition-colors"
-                      onClick={previousTrack}
+                      onClick={toggleLyricsView}
+                      className="hover:bg-white/10 p-2 rounded-full transition-colors"
                     >
-                      <SkipBack className="w-6 h-6 text-white" />
+                      <ArrowLeft className="w-6 h-6 text-white" />
                     </button>
-
-                    <motion.button
-                      className="w-16 h-16 rounded-full bg-white flex items-center justify-center
-                               hover:bg-white/90 transition-colors"
-                      whileTap={{ scale: 0.95 }}
-                      onClick={togglePlay}
+                    <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
+                  </div>
+                  <div className="space-y-6">
+                    {lyrics.map((lyric, index) => (
+                      <motion.p
+                        key={index}
+                        className={`text-lg text-center ${
+                          index === currentLyricIndex ? 'text-white scale-105' : 'text-white/40'
+                        }`}
+                        animate={{
+                          opacity: index === currentLyricIndex ? 1 : 0.4,
+                        }}
+                      >
+                        {lyric.text}
+                      </motion.p>
+                    ))}
+                  </div>
+                </div>
+              ) : showQueue ? (
+                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto">
+                  <div className="flex items-center mb-6">
+                    <button
+                      onClick={() => setShowQueue(false)}
+                      className="hover:bg-white/10 p-2 rounded-full transition-colors"
                     >
-                      {isPlaying ? (
-                        <Pause className="w-8 h-8 text-black" />
-                      ) : (
-                        <Play className="w-8 h-8 text-black ml-1" />
-                      )}
-                    </motion.button>
-
-                    <button className="p-3 hover:bg-white/10 rounded-full transition-colors" onClick={skipTrack}>
-                      <SkipForward className="w-6 h-6 text-white" />
+                      <ArrowLeft className="w-6 h-6 text-white" />
                     </button>
+                    <h2 className="text-lg font-semibold text-white ml-4">Up Next</h2>
+                  </div>
+                  <div className="space-y-4">
+                    {queue.map((track, index) => (
+                      <motion.div
+                        key={index}
+                        className="flex items-center space-x-4 p-2 hover:bg-white/10 rounded-lg"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+                          <img
+                            src={track.album.cover_medium}
+                            alt={track.title}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{track.title}</p>
+                          <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
+                        </div>
+                        <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                          <MoreHorizontal className="w-5 h-5 text-white/60" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Album Art with Blur Background */}
+                  <div className="relative w-full flex justify-center items-center mb-8">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center filter blur-xl opacity-80"
+                      style={{ backgroundImage: `url(${currentTrack.album.cover_medium})` }}
+                    />
+                    <motion.div
+                      className={`relative z-10 ${
+                        isSmallDevice ? 'w-48 h-48' : 'w-64 h-64'
+                      } rounded-2xl overflow-hidden shadow-2xl`}
+                      layoutId="album-art"
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      <img
+                        src={currentTrack.album.cover_medium}
+                        alt={currentTrack.title}
+                      />
+                    </motion.div>
                   </div>
 
-                  <button onClick={toggleRepeat} className="p-3 rounded-full transition-colors">
-                    {repeatMode === 'one' ? (
-                      <Repeat1 className="w-6 h-6 text-green-500" />
-                    ) : (
-                      <Repeat
-                        className={`w-6 h-6 ${repeatMode === 'all' ? 'text-green-500' : 'text-white/60'}`}
-                      />
-                    )}
-                  </button>
-                </div>
+                  {/* Track Info */}
+                  <div className="w-full text-center mb-8">
+                    <h2 className={`${isSmallDevice ? 'text-xl' : 'text-2xl'} font-bold text-white mb-2`}>
+                      {currentTrack.title}
+                    </h2>
+                    <p className="text-white/60">{currentTrack.artist.name}</p>
+                  </div>
 
-                {/* Responsive Quick Actions */}
-                <div className="w-full grid grid-cols-4 gap-4 mb-6">
-                  {visibleActionButtons.map((btn, index) => (
-                    <ActionButton
-                      key={index}
-                      icon={btn.icon}
-                      label={btn.label}
-                      active={btn.active}
-                      onClick={btn.onClick}
-                    />
-                  ))}
+                  {/* Quality Badge */}
+                  <QualityBadge quality={audioQuality} onClick={() => setShowAudioMenu(true)} />
 
-                  {/* If there are hidden buttons, show the More Options button */}
-                  {visibleActionButtons.length < allActionButtons.length && (
-                    <ActionButton
-                      icon={MoreHorizontal}
-                      label="More"
-                      onClick={() => setShowMoreOptions(true)}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
+                  {/* Seekbar and Time */}
+                  <div className="w-full mb-8 mt-6">
+                  <Seekbar
+  progress={seekPosition / duration}
+  handleSeek={handleSeek}
+  duration={duration}
+/>
 
-            {/* More Options Modal */}
-            <AnimatePresence>
-              {showMoreOptions && (
-                <motion.div
-                  className="fixed inset-0 bg-black/80 z-50"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setShowMoreOptions(false)} // Close modal on background click
-                >
-                  <motion.div
-                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl max-h-[80%] overflow-y-auto"
-                    initial={{ y: '100%' }}
-                    animate={{ y: 0 }}
-                    exit={{ y: '100%' }}
-                    onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
-                  >
-                    <div className="p-4">
-                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
 
-                      <div className="grid grid-cols-4 gap-4 mb-8">
-                        {additionalOptions.map((item, index) => (
-                          <ActionButton
-                            key={index}
-                            icon={item.icon}
-                            label={item.label}
-                            onClick={() => {
-                              item.action();
-                              setShowMoreOptions(false);
-                            }}
-                          />
-                        ))}
-                      </div>
+                  <div className="flex justify-between text-sm text-white/60 mt-2">
+                      <span>{formatTime(seekPosition)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
 
+                  {/* Main Controls */}
+                  <div className="w-full flex items-center justify-between mb-8">
+                    <button
+                      onClick={shuffleQueue}
+                      className={`p-3 rounded-full transition-colors ${
+                        shuffleOn ? 'text-green-500' : 'text-white/60 hover:bg-white/10'
+                      }`}
+                    >
+                      <Shuffle className="w-6 h-6" />
+                    </button>
+
+                    <div className="flex items-center space-x-8">
                       <button
-                        className="w-full py-4 text-white/60 hover:text-white transition-colors"
-                        onClick={() => setShowMoreOptions(false)}
+                        className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                        onClick={previousTrack}
                       >
-                        Cancel
+                        <SkipBack className="w-6 h-6 text-white" />
+                      </button>
+
+                      <motion.button
+                        className="w-16 h-16 rounded-full bg-white flex items-center justify-center
+                                hover:bg-white/90 transition-colors"
+                        whileTap={{ scale: 0.95 }}
+                        onClick={togglePlay}
+                      >
+                        {isPlaying ? (
+                          <Pause className="w-8 h-8 text-black" />
+                        ) : (
+                          <Play className="w-8 h-8 text-black ml-1" />
+                        )}
+                      </motion.button>
+
+                      <button className="p-3 hover:bg-white/10 rounded-full transition-colors" onClick={skipTrack}>
+                        <SkipForward className="w-6 h-6 text-white" />
                       </button>
                     </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            {/* Audio Quality Menu */}
+                    <button
+                      onClick={() =>
+                        setRepeatMode((current) => {
+                          switch (current) {
+                            case 'off':
+                              return 'all';
+                            case 'all':
+                              return 'one';
+                            default:
+                              return 'off';
+                          }
+                        })
+                      }
+                      className="p-3 rounded-full transition-colors"
+                    >
+                      {repeatMode === 'one' ? (
+                        <Repeat1 className="w-6 h-6 text-green-500" />
+                      ) : (
+                        <Repeat
+                          className={`w-6 h-6 ${repeatMode === 'all' ? 'text-green-500' : 'text-white/60'}`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Responsive Action Buttons Grid */}
+                  <div className={`w-full grid ${isSmallDevice ? 'grid-cols-3' : 'grid-cols-4'} gap-4 mb-6`}>
+                    {getVisibleActionButtons().map((btn, index) => (
+                      <ActionButton
+                        key={index}
+                        icon={btn.icon}
+                        label={btn.label}
+                        active={btn.active}
+                        onClick={btn.onClick}
+                      />
+                    ))}
+                    {!isSmallDevice && (
+                      <ActionButton
+                        icon={MoreHorizontal}
+                        label="More"
+                        onClick={() => setShowMoreOptions(true)}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Audio Quality Menu Modal */}
             <AnimatePresence>
               {showAudioMenu && (
                 <motion.div
@@ -637,25 +723,24 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={() => setShowAudioMenu(false)} // Close modal on background click
+                  onClick={() => setShowAudioMenu(false)}
                 >
                   <motion.div
                     className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl"
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
-                    onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="p-4">
                       <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
-
                       <h3 className="text-lg font-bold text-white mb-4">Audio Quality</h3>
 
                       {(['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'] as AudioQuality[]).map((quality) => (
                         <button
                           key={quality}
                           className={`w-full flex items-center justify-between p-4 rounded-lg mb-2
-                          ${audioQuality === quality ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                            ${audioQuality === quality ? 'bg-white/10' : 'hover:bg-white/5'}`}
                           onClick={() => {
                             setAudioQuality(quality);
                             setShowAudioMenu(false);
@@ -693,49 +778,59 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
               )}
             </AnimatePresence>
 
-            {/* Queue Modal */}
+            {/* More Options Modal */}
             <AnimatePresence>
-              {showQueue && (
+              {showMoreOptions && (
                 <motion.div
                   className="fixed inset-0 bg-black/80 z-50"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={() => setShowQueue(false)} // Close modal on background click
+                  onClick={() => setShowMoreOptions(false)}
                 >
                   <motion.div
-                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl max-h-[80%]"
+                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl max-h-[80%] overflow-y-auto"
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
-                    onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="p-4">
                       <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
-                      <h3 className="text-lg font-bold text-white mb-4">Up Next</h3>
-                      <div className="overflow-y-auto max-h-[60vh]">
-                        {queue.map((track, index) => (
-                          <div key={index} className="flex items-center space-x-4 p-2 hover:bg-white/10 rounded-lg">
-                            <img
-                              src={track.album.cover_medium}
-                              alt={track.title}
-                              className="w-12 h-12 rounded-lg object-cover"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-medium truncate">{track.title}</p>
-                              <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
-                            </div>
-                            <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                              <MoreHorizontal className="w-5 h-5 text-white/60" />
-                            </button>
-                          </div>
+
+                      <div className={`grid ${isSmallDevice ? 'grid-cols-3' : 'grid-cols-4'} gap-4 mb-8`}>
+                        {moreOptionsItems.map((item, index) => (
+                          <ActionButton
+                            key={index}
+                            icon={item.icon}
+                            label={item.label}
+                            onClick={() => {
+                              item.action();
+                              setShowMoreOptions(false);
+                            }}
+                          />
                         ))}
+                        {/* Additional buttons for small devices */}
+                        {isSmallDevice &&
+                          actionButtons.slice(3).map((btn, index) => (
+                            <ActionButton
+                              key={`additional-${index}`}
+                              icon={btn.icon}
+                              label={btn.label}
+                              active={btn.active}
+                              onClick={() => {
+                                btn.onClick?.();
+                                setShowMoreOptions(false);
+                              }}
+                            />
+                          ))}
                       </div>
+
                       <button
-                        className="w-full py-4 text-white/60 hover:text-white transition-colors mt-4"
-                        onClick={() => setShowQueue(false)}
+                        className="w-full py-4 text-white/60 hover:text-white transition-colors"
+                        onClick={() => setShowMoreOptions(false)}
                       >
-                        Close
+                        Cancel
                       </button>
                     </div>
                   </motion.div>
@@ -745,6 +840,85 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <style jsx>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+          animation: marquee 15s linear infinite;
+          display: inline-block;
+          padding-right: 2rem;
+        }
+
+        /* Enhanced seekbar thumb styling */
+        input[type="range"] {
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          width: 12px;
+          height: 4px;
+          background: white;
+          border-radius: 2px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+          transform: scale(1.2);
+        }
+
+        /* Additional styles for Firefox */
+        input[type="range"]::-moz-range-thumb {
+          width: 12px;
+          height: 4px;
+          background: white;
+          border: none;
+          border-radius: 2px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+          transform: scale(1.2);
+        }
+
+        /* Media queries for responsive layout */
+        @media (max-width: 375px) {
+          .grid-cols-4 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+
+        /* Enhanced touch area for better mobile interaction */
+        @media (max-width: 640px) {
+          button {
+            min-height: 44px;
+            min-width: 44px;
+          }
+        }
+
+        /* Scale adjustments for smaller devices */
+        @media (max-height: 667px) {
+          .w-64 {
+            width: 12rem;
+          }
+          .h-64 {
+            height: 12rem;
+          }
+        }
+
+        .truncate {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      `}</style>
     </div>
   );
 };
