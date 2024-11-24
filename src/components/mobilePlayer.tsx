@@ -1,51 +1,29 @@
-// mobilePlayer.tsx (mobile)
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  ChangeEvent,
-  TouchEvent,
-} from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-img-element */
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  useTransform,
-} from 'framer-motion';
-import {
-  Heart,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  ChevronDown,
-  Volume2,
-  Shuffle,
-  Music,
-  Mic2,
-  Share2,
-  MoreHorizontal,
-  Repeat,
-  Repeat1,
-  Radio,
-  Download,
-  ListMusic,
-  ArrowLeft,
-  Clock,
-  Filter,
+  Heart, Play, Pause, SkipBack, SkipForward, ChevronDown,
+  Music, Download, Share2, Radio, Plus, Library,
+  Shuffle, Repeat, Repeat1, Mic2, ListMusic,
+  ArrowLeft, MoreHorizontal,
+  Ban, Bluetooth, Cast, Crown, Settings,
+  Share, Star,
+  RefreshCw, Flag, AlertCircle, Lock, UserPlus
 } from 'lucide-react';
-import { FastAverageColor } from 'fast-average-color';
 
-// Interfaces for data structures
+// Types and Interfaces
 interface Artist {
   name: string;
 }
 
 interface Album {
+  title: string;
   cover_medium: string;
 }
 
 interface Track {
+  id: string;
   title: string;
   artist: Artist;
   album: Album;
@@ -56,246 +34,125 @@ interface Lyric {
   text: string;
 }
 
-// Enhanced Mobile Header with Search
-interface MobileHeaderProps {
-  searchQuery: string;
-  setSearchQuery: (value: string) => void;
-  toggleFilters: () => void;
-  showFilters: boolean;
-  onBackClick: () => void;
-}
-
-const MobileHeader: React.FC<MobileHeaderProps> = ({
-  searchQuery,
-  setSearchQuery,
-  toggleFilters,
-  showFilters,
-  onBackClick,
-}) => (
-  <motion.div
-    className="sticky top-0 z-30 bg-black/90 backdrop-blur-lg px-4 py-3"
-    initial={{ y: -20, opacity: 0 }}
-    animate={{ y: 0, opacity: 1 }}
-  >
-    <div className="flex items-center gap-3">
-      {showFilters && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={onBackClick}
-          className="p-2"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </motion.button>
-      )}
-      <div className="relative flex-1">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setSearchQuery(e.target.value)
-          }
-          placeholder="Search tracks, artists, or albums..."
-          className="w-full bg-white/10 rounded-full px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all duration-300"
-        />
-        <Filter
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60"
-          onClick={toggleFilters}
-        />
-      </div>
-      <button className="p-2">
-        <Clock className="w-6 h-6" />
-      </button>
-    </div>
-
-    {/* Filter Pills */}
-    <AnimatePresence>
-      {showFilters && (
-        <motion.div
-          className="flex gap-2 overflow-x-auto py-3 no-scrollbar"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-        >
-          {['Songs', 'Artists', 'Albums', 'Playlists', 'Podcasts'].map(
-            (filter) => (
-              <button
-                key={filter}
-                className="flex-shrink-0 px-4 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              >
-                {filter}
-              </button>
-            )
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </motion.div>
-);
-
-// Enhanced Lyrics View
-interface EnhancedLyricsViewProps {
-  lyrics: Lyric[];
-  currentLyricIndex: number;
-  currentTrack: Track;
-  onClose: () => void;
-  isPlaying: boolean;
-  togglePlay: () => void;
-  formatTime: (seconds: number) => string;
-  seekPosition: number;
-  duration: number;
-}
-
-const EnhancedLyricsView: React.FC<EnhancedLyricsViewProps> = ({
-  lyrics,
-  currentLyricIndex,
-  currentTrack,
-  onClose,
-  isPlaying,
-  togglePlay,
-  formatTime,
-  seekPosition,
-  duration,
-}) => {
-  const lyricsRef = useRef<HTMLDivElement>(null);
-  const progressValue = useMotionValue(0);
-  const progressColor = useTransform(
-    progressValue,
-    [0, 100],
-    ['rgb(59, 130, 246)', 'rgb(16, 185, 129)']
-  );
-
-  useEffect(() => {
-    if (duration > 0) {
-      progressValue.set((seekPosition / duration) * 100);
-    }
-  }, [seekPosition, duration, progressValue]);
-
-  return (
-    <motion.div
-      className="fixed inset-0 bg-black z-50"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-black/50 backdrop-blur-md p-4">
-        <div className="flex justify-between items-center">
-          <button onClick={onClose}>
-            <ChevronDown className="w-6 h-6" />
-          </button>
-          <span className="text-sm font-medium">LYRICS</span>
-          <button>
-            <Share2 className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
-
-      {/* Album Art and Title */}
-      <div className="px-4 py-6 text-center">
-        <motion.img
-          src={currentTrack?.album?.cover_medium}
-          alt={currentTrack?.title}
-          className="w-32 h-32 rounded-lg mx-auto mb-4 shadow-2xl"
-          layoutId="lyrics-cover"
-        />
-        <h2 className="text-xl font-bold">{currentTrack?.title}</h2>
-        <p className="text-white/60">{currentTrack?.artist?.name}</p>
-      </div>
-
-      {/* Lyrics Scroll View */}
-      <div
-        ref={lyricsRef}
-        className="flex-1 overflow-y-auto px-4 pb-32 pt-4"
-        style={{
-          height: 'calc(100vh - 350px)',
-          scrollBehavior: 'smooth',
-        }}
-      >
-        {lyrics.map((lyric: Lyric, index: number) => (
-          <motion.p
-            key={index}
-            className={`text-center text-lg mb-8 transition-all duration-300 ${
-              index === currentLyricIndex
-                ? 'text-white scale-105 font-bold'
-                : 'text-white/40'
-            }`}
-            animate={{
-              opacity: index === currentLyricIndex ? 1 : 0.4,
-            }}
-          >
-            {lyric.text}
-          </motion.p>
-        ))}
-      </div>
-
-      {/* Player Controls */}
-      <div className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl p-4">
-        {/* Progress Bar */}
-        <div className="mb-4">
-          <motion.div
-            className="h-1 bg-white/10 rounded-full overflow-hidden"
-            style={{ width: `${(seekPosition / duration) * 100}%` }}
-          >
-            <motion.div
-              className="h-full w-full"
-              style={{ backgroundColor: progressColor }}
-            />
-          </motion.div>
-          <div className="flex justify-between mt-1 text-xs text-white/60">
-            <span>{formatTime(seekPosition)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-between">
-          <button className="p-2">
-            <Mic2 className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-8">
-            <SkipBack className="w-6 h-6" />
-            <button
-              className="w-12 h-12 rounded-full bg-white flex items-center justify-center"
-              onClick={togglePlay}
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 text-black" />
-              ) : (
-                <Play className="w-6 h-6 text-black" />
-              )}
-            </button>
-            <SkipForward className="w-6 h-6" />
-          </div>
-          <button className="p-2">
-            <ListMusic className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+type AudioQuality = 'MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER';
+type RepeatMode = 'off' | 'all' | 'one';
 
 interface MobilePlayerProps {
   currentTrack: Track;
   isPlaying: boolean;
   togglePlay: () => void;
-  skipTrack: () => void;
+  skipTrack: () => void | Promise<void>;
   previousTrack: () => void;
   seekPosition: number;
   duration: number;
-  handleSeek: (e: ChangeEvent<HTMLInputElement>) => void;
+  handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isLiked: boolean;
   toggleLike: () => void;
   lyrics: Lyric[];
   currentLyricIndex: number;
-  queue: Track[]; 
-  shuffleOn: boolean;
-  shuffleQueue: () => void;
   showLyrics: boolean;
   toggleLyricsView: () => void;
+  shuffleOn: boolean;
+  shuffleQueue: () => void;
+  queue: Track[];
 }
 
+// Helper Components
+const WaveSeekbar: React.FC<{ progress: number; handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ progress, handleSeek }) => (
+  <div className="relative w-full h-1.5 bg-white/10 rounded-full overflow-hidden group">
+    <motion.div
+      className="absolute inset-y-0 left-0 bg-gradient-to-r from-white/60 to-white/80"
+      style={{ width: `${progress * 100}%` }}
+    >
+      <motion.div
+        className="absolute inset-0"
+        animate={{
+          backgroundPosition: ['0% 0%', '100% 0%'],
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: 'linear',
+        }}
+        style={{
+          background:
+            'linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.3) 100%)',
+          backgroundSize: '200% 100%',
+        }}
+      />
+    </motion.div>
+    <div className="absolute -top-2 -bottom-2 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.001"
+        value={progress}
+        onChange={handleSeek}
+        className="w-full h-full appearance-none bg-transparent cursor-pointer"
+        style={{
+          WebkitAppearance: 'none',
+          background: 'transparent',
+        }}
+      />
+    </div>
+  </div>
+);
+
+const QualityBadge: React.FC<{ quality: AudioQuality; onClick: () => void }> = ({ quality, onClick }) => {
+  const icons = {
+    MAX: Crown,
+    HIGH: Star,
+    NORMAL: Settings,
+    DATA_SAVER: RefreshCw,
+  };
+
+  const qualityColors = {
+    MAX: 'bg-gradient-to-r from-yellow-600 to-yellow-800',
+    HIGH: 'bg-gradient-to-r from-purple-500 to-purple-700',
+    NORMAL: 'bg-gradient-to-r from-blue-500 to-blue-700',
+    DATA_SAVER: 'bg-gradient-to-r from-green-500 to-green-700',
+  };
+
+  const Icon = icons[quality];
+  return (
+    <motion.button
+      className={`px-4 py-1 rounded-full text-xs font-medium ${qualityColors[quality]} text-white`}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+    >
+      <Icon className="w-3 h-3 inline mr-1" />
+      <span>{quality}</span>
+    </motion.button>
+  );
+};
+
+const ActionButton: React.FC<{
+  icon: React.FC<any>;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}> = ({ icon: Icon, label, active, onClick }) => (
+  <button className="flex flex-col items-center space-y-1" onClick={onClick}>
+    <div
+      className={`w-12 h-12 rounded-full flex items-center justify-center
+        ${active ? 'bg-green-500/20 text-green-500' : 'bg-white/10 text-white/60'}
+        transition-all duration-200 hover:bg-white/20`}
+    >
+      <Icon className="w-6 h-6" />
+    </div>
+    <span className="text-xs text-white/60">{label}</span>
+  </button>
+);
+
+const DeviceIndicator: React.FC<{ deviceName: string }> = ({ deviceName }) => (
+  <div className="flex items-center px-3 py-1 rounded-full bg-blue-500/20">
+    <Bluetooth className="w-4 h-4 text-blue-400 mr-2" />
+    <span className="text-sm text-blue-400">{deviceName}</span>
+  </div>
+);
+
+// Main Component
 const MobilePlayer: React.FC<MobilePlayerProps> = ({
   currentTrack,
   isPlaying,
@@ -307,59 +164,84 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   handleSeek,
   isLiked,
   toggleLike,
-  shuffleOn,
-  shuffleQueue,
-  showLyrics,
-  toggleLyricsView,
   lyrics,
   currentLyricIndex,
+  showLyrics,
+  toggleLyricsView,
+  shuffleOn,
+  shuffleQueue,
+  queue,
 }) => {
+  // State variables
   const [isExpanded, setIsExpanded] = useState(false);
-  const [dominantColor, setDominantColor] = useState('rgb(0,0,0)');
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
+  const [audioQuality, setAudioQuality] = useState<AudioQuality>('MAX');
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [showEqualizer, setShowEqualizer] = useState(false);
-  const [showAudioOptions, setShowAudioOptions] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-
+  // Refs
   const playerRef = useRef<HTMLDivElement>(null);
+  const albumRef = useRef<HTMLDivElement>(null);
 
-  // Gesture handling with improved calculations
-  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
-    setTouchStart(e.touches[0].clientY);
+  // Effects
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist.name,
+        album: currentTrack.album.title,
+        artwork: [{ src: currentTrack.album.cover_medium, sizes: '512x512', type: 'image/jpeg' }],
+      });
+    }
+  }, [currentTrack]);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        (showMoreOptions || showAudioMenu || showQueue) &&
+        playerRef.current &&
+        !playerRef.current.contains(event.target as Node)
+      ) {
+        setShowMoreOptions(false);
+        setShowAudioMenu(false);
+        setShowQueue(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMoreOptions, showAudioMenu, showQueue]);
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    });
   };
 
-  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
-    if (touchStart === null) return;
-    setTouchEnd(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart) return;
 
-    const distance = touchStart - e.touches[0].clientY;
-    const threshold = window.innerHeight * 0.2; // 20% of screen height
+    const xDiff = touchStart.x - e.touches[0].clientX;
+    const yDiff = touchStart.y - e.touches[0].clientY;
 
-    if (Math.abs(distance) > threshold) {
-      setIsExpanded(distance > 0);
+    if (Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > 50) {
+      if (xDiff > 0) {
+        skipTrack();
+      } else {
+        previousTrack();
+      }
+      setTouchStart(null);
     }
   };
 
-  const handleTouchEnd = () => {
-    if (touchStart === null || touchEnd === null) return;
-
-    const distance = touchStart - touchEnd;
-    const threshold = window.innerHeight * 0.2;
-
-    if (Math.abs(distance) > threshold) {
-      setIsExpanded(distance > 0);
-    }
-
-    setTouchStart(null);
-    setTouchEnd(null);
-  };
-
-  // Cycle through repeat modes
   const toggleRepeat = () => {
     setRepeatMode((current) => {
       switch (current) {
@@ -373,418 +255,471 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
     });
   };
 
-  // Color extraction effect
-  useEffect(() => {
-    if (currentTrack?.album?.cover_medium) {
-      const fac = new FastAverageColor();
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = currentTrack.album.cover_medium;
-
-      img.onload = () => {
-        const color = fac.getColor(img, {
-          algorithm: 'dominant',
-          ignoredColor: [
-            [0, 0, 0, 255],
-            [255, 255, 255, 255],
-          ], // Ignore pure black/white
-        });
-        if (color) {
-          setDominantColor(
-            `rgb(${color.value[0]},${color.value[1]},${color.value[2]})`
-          );
-        }
-      };
-    }
-  }, [currentTrack]);
-
-  // Variants for animations
-  const slideVariants = {
-    collapsed: {
-      height: '64px',
-      borderRadius: '16px 16px 0 0',
-    },
-    expanded: {
-      height: '100vh',
-      borderRadius: '0',
-    },
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <motion.div
-    ref={playerRef}
-    className="fixed bottom-16 left-0 right-0 z-50"
-    variants={slideVariants}
-    animate={isExpanded ? 'expanded' : 'collapsed'}
-    transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-    onTouchStart={handleTouchStart}
-    onTouchMove={handleTouchMove}
-    onTouchEnd={handleTouchEnd}
-  >
-    {/* Dynamic Background */}
-    <div
-      className="absolute inset-0 backdrop-blur-2xl"
-      style={{
-        background: isExpanded
-          ? `linear-gradient(180deg, ${dominantColor}99 0%, rgba(0,0,0,0.98) 100%)`
-          : `linear-gradient(180deg, ${dominantColor}66 0%, rgba(0,0,0,0.95) 100%)`,
-      }}
-    />
+  // More options items
+  const moreOptionsItems = [
+    { icon: Ban, label: "Don't play", action: () => console.log('Blocked') },
+    { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
+    { icon: Library, label: 'Add to Playlist', action: () => console.log('Added to playlist') },
+    { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
+    { icon: Share, label: 'Share', action: () => console.log('Shared') },
+    { icon: Flag, label: 'Report', action: () => console.log('Reported') },
+    { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
+    { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
+  ];
 
-      {/* Mini Player */}
+  return (
+    <div className="fixed bottom-16 left-0 right-0 z-50">
+      {/* Collapsed Player */}
       {!isExpanded && (
-        <div className="relative p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <motion.div
-                className="relative w-12 h-12 rounded-xl overflow-hidden shadow-lg"
-                layoutId="cover"
-              >
-                <motion.img
-                  src={currentTrack?.album?.cover_medium}
-                  alt={currentTrack?.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/20" />
-              </motion.div>
-              <div className="flex-1 min-w-0">
-                <motion.p
-                  className="font-medium text-white truncate"
-                  layoutId="title"
+        <motion.div
+          className="mx-2 rounded-t-xl"
+          style={{
+            background: 'rgba(23, 23, 23, 0.6)',
+            backdropFilter: 'blur(30px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+            boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+          onClick={() => setIsExpanded(true)}
+        >
+          {/* Mini Player Content */}
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 flex-1">
+                <motion.div
+                  ref={albumRef}
+                  className="relative w-12 h-12 rounded-lg overflow-hidden"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
                 >
-                  {currentTrack?.title}
-                </motion.p>
-                <motion.p
-                  className="text-sm text-white/70 truncate"
-                  layoutId="artist"
+                  <img
+                    src={currentTrack.album.cover_medium}
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover"
+                  />
+                </motion.div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-medium truncate">{currentTrack.title}</p>
+                  <p className="text-white/60 text-sm truncate">{currentTrack.artist.name}</p>
+                </div>
+              </div>
+
+              {/* Updated controls in mini player */}
+              <div className="flex items-center space-x-2">
+                <button
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    previousTrack();
+                  }}
                 >
-                  {currentTrack?.artist?.name}
-                </motion.p>
+                  <SkipBack className="w-5 h-5 text-white" />
+                </button>
+
+                <button
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                >
+                  {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
+                </button>
+
+                <button
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    skipTrack();
+                  }}
+                >
+                  <SkipForward className="w-5 h-5 text-white" />
+                </button>
+
+                <button
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike();
+                  }}
+                >
+                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-green-500 text-green-500' : 'text-white/60'}`} />
+                </button>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <motion.button
-                onClick={togglePlay}
-                whileTap={{ scale: 0.95 }}
-                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center"
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5 text-white" />
-                ) : (
-                  <Play className="w-5 h-5 text-white" />
-                )}
-              </motion.button>
-            </div>
+
+            {/* Mini Progress Bar */}
+            <WaveSeekbar progress={seekPosition / duration} handleSeek={handleSeek} />
+
+            {/* Removed Quality Badge from mini player */}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Expanded Player */}
       <AnimatePresence>
-        {isExpanded && !showLyrics && (
+        {isExpanded && (
           <motion.div
-            className="relative h-full p-6 flex flex-col"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            ref={playerRef}
+            className="fixed inset-0 z-50"
+            style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(30px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 20 }}
           >
-            {/* Add MobileHeader at the top of expanded view */}
-            <MobileHeader
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              toggleFilters={() => setShowFilters(!showFilters)}
-              showFilters={showFilters}
-              onBackClick={() => setIsExpanded(false)}
-            />
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-              <motion.button
+            <div className="flex items-center justify-between p-4">
+              <button
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
                 onClick={() => setIsExpanded(false)}
-                className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-lg flex items-center justify-center"
-                whileTap={{ scale: 0.95 }}
               >
                 <ChevronDown className="w-6 h-6 text-white" />
-              </motion.button>
+              </button>
 
-              <div className="flex items-center space-x-4">
-                <button
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={() => setShowAudioOptions(true)}
-                >
-                  <Volume2 className="w-5 h-5 text-white" />
+              <div className="flex items-center space-x-3">
+                {connectedDevice && <DeviceIndicator deviceName={connectedDevice} />}
+
+                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <Cast className="w-5 h-5 text-white/60" />
                 </button>
+
                 <button
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={() => setShowQueue(true)}
+                  onClick={() => setShowMoreOptions(true)}
                 >
-                  <ListMusic className="w-5 h-5 text-white" />
+                  <MoreHorizontal className="w-5 h-5 text-white/60" />
                 </button>
               </div>
             </div>
 
-            {/* Album Art & Track Info */}
-            <div className="flex-1 flex flex-col items-center justify-center space-y-8">
-              <motion.div
-                className="relative w-72 h-72 rounded-2xl overflow-hidden shadow-2xl"
-                layoutId="cover"
-                animate={{ scale: 1, rotateZ: isPlaying ? 360 : 0 }}
-                transition={{
-                  rotateZ: {
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: 'linear',
-                  },
-                }}
-              >
-                <motion.img
-                  src={currentTrack?.album?.cover_medium}
-                  alt={currentTrack?.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/40" />
-              </motion.div>
-
-              {/* Track Info */}
-              <div className="text-center space-y-2 w-full max-w-xs">
-                <motion.h2
-                  className="text-2xl font-bold text-white truncate"
-                  layoutId="title"
-                >
-                  {currentTrack?.title}
-                </motion.h2>
-                <motion.p
-                  className="text-lg text-white/70 truncate"
-                  layoutId="artist"
-                >
-                  {currentTrack?.artist?.name}
-                </motion.p>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full space-y-2">
-                <div className="relative">
-                  <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-white"
-                      style={{
-                        width: `${(seekPosition / duration) * 100}%`,
-                      }}
-                      layoutId="progress"
-                    />
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration}
-                    value={seekPosition}
-                    onChange={handleSeek}
-                    className="absolute inset-0 w-full opacity-0 cursor-pointer"
-                    style={{ height: '20px', marginTop: '-10px' }}
-                  />
-                </div>
-                <div className="flex justify-between text-sm text-white/50">
-                  <span>{formatTime(seekPosition)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-              </div>
-
-              {/* Main Controls */}
-              <div className="w-full">
-                {/* Additional Controls */}
-                <div className="flex justify-between items-center mb-6">
+            {showLyrics ? (
+              <div className="px-4 h-[calc(100%-200px)] overflow-y-auto">
+                <div className="flex items-center mb-6">
                   <button
-                    className={`p-2 ${
-                      shuffleOn ? 'text-green-500' : 'text-white/70'
-                    }`}
-                    onClick={shuffleQueue}
+                    onClick={toggleLyricsView}
+                    className="hover:bg-white/10 p-2 rounded-full transition-colors"
                   >
-                    <Shuffle className="w-5 h-5" />
+                    <ArrowLeft className="w-6 h-6 text-white" />
                   </button>
-                  <button
-                    className="p-2 text-white/70"
-                    onClick={toggleRepeat}
+                  <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
+                </div>
+                {lyrics.map((lyric, index) => (
+                  <motion.p
+                    key={index}
+                    className={`text-lg mb-6 text-center ${
+                      index === currentLyricIndex ? 'text-white scale-105' : 'text-white/40'
+                    }`}
+                    animate={{
+                      opacity: index === currentLyricIndex ? 1 : 0.4,
+                    }}
                   >
+                    {lyric.text}
+                  </motion.p>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 flex flex-col items-center">
+                {/* Album Art */}
+                <motion.div
+                  className="w-64 h-64 relative rounded-2xl overflow-hidden shadow-2xl mb-8"
+                  layoutId="album-art"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                >
+                  <img
+                    src={currentTrack.album.cover_medium}
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/20" />
+                </motion.div>
+
+                {/* Track Info */}
+                <div className="w-full text-center mb-8">
+                  <h2 className="text-2xl font-bold text-white mb-2">{currentTrack.title}</h2>
+                  <p className="text-white/60">{currentTrack.artist.name}</p>
+                </div>
+
+                {/* Quality Badge */}
+                <QualityBadge quality={audioQuality} onClick={() => setShowAudioMenu(true)} />
+
+                {/* Seekbar and Time */}
+                <div className="w-full mb-8 mt-6">
+                  <WaveSeekbar progress={seekPosition / duration} handleSeek={handleSeek} />
+                  <div className="flex justify-between text-sm text-white/60 mt-2">
+                    <span>{formatTime(seekPosition)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+
+                {/* Main Controls */}
+                <div className="w-full flex items-center justify-between mb-8">
+                  <button
+                    onClick={shuffleQueue}
+                    className={`p-3 rounded-full transition-colors ${
+                      shuffleOn ? 'text-green-500' : 'text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    <Shuffle className="w-6 h-6" />
+                  </button>
+
+                  <div className="flex items-center space-x-8">
+                    <button
+                      className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                      onClick={previousTrack}
+                    >
+                      <SkipBack className="w-6 h-6 text-white" />
+                    </button>
+
+                    <motion.button
+                      className="w-16 h-16 rounded-full bg-white flex items-center justify-center
+                               hover:bg-white/90 transition-colors"
+                      whileTap={{ scale: 0.95 }}
+                      onClick={togglePlay}
+                    >
+                      {isPlaying ? (
+                        <Pause className="w-8 h-8 text-black" />
+                      ) : (
+                        <Play className="w-8 h-8 text-black ml-1" />
+                      )}
+                    </motion.button>
+
+                    <button className="p-3 hover:bg-white/10 rounded-full transition-colors" onClick={skipTrack}>
+                      <SkipForward className="w-6 h-6 text-white" />
+                    </button>
+                  </div>
+
+                  <button onClick={toggleRepeat} className="p-3 rounded-full transition-colors">
                     {repeatMode === 'one' ? (
-                      <Repeat1 className="w-5 h-5 text-green-500" />
+                      <Repeat1 className="w-6 h-6 text-green-500" />
                     ) : (
                       <Repeat
-                        className={`w-5 h-5 ${
-                          repeatMode === 'all' ? 'text-green-500' : ''
-                        }`}
+                        className={`w-6 h-6 ${repeatMode === 'all' ? 'text-green-500' : 'text-white/60'}`}
                       />
                     )}
                   </button>
-                  <button
-                    className={`p-2 ${
-                      showEqualizer ? 'text-green-500' : 'text-white/70'
-                    }`}
-                    onClick={() => setShowEqualizer(!showEqualizer)}
-                  >
-                    <Radio className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-white/70">
-                    <Share2 className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-white/70">
-                    <MoreHorizontal className="w-5 h-5" />
-                  </button>
                 </div>
 
-                {/* Playback Controls */}
-                <div className="flex items-center justify-center space-x-8">
-                  <motion.button
-                    className="p-2 text-white"
-                    whileTap={{ scale: 0.95 }}
-                    onClick={previousTrack}
-                  >
-                    <SkipBack className="w-8 h-8" />
-                  </motion.button>
-
-                  <motion.button
-                    className="w-16 h-16 rounded-full bg-white flex items-center justify-center"
-                    whileTap={{ scale: 0.95 }}
-                    onClick={togglePlay}
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-8 h-8 text-black" />
-                    ) : (
-                      <Play className="w-8 h-8 text-black ml-1" />
-                    )}
-                  </motion.button>
-
-                  <motion.button
-                    className="p-2 text-white"
-                    whileTap={{ scale: 0.95 }}
-                    onClick={skipTrack}
-                  >
-                    <SkipForward className="w-8 h-8" />
-                  </motion.button>
+                {/* Quick Actions */}
+                <div className="w-full grid grid-cols-4 gap-4 mb-6">
+                  <ActionButton icon={Heart} label="Like" active={isLiked} onClick={toggleLike} />
+                  <ActionButton
+                    icon={Plus}
+                    label="Add to"
+                    onClick={() => console.log('Add to playlist')}
+                  />
+                  <ActionButton
+                    icon={Download}
+                    label="Download"
+                    onClick={() => console.log('Download')}
+                  />
+                  <ActionButton icon={Share2} label="Share" onClick={() => console.log('Share')} />
                 </div>
 
-                {/* Bottom Controls */}
-                <div className="flex justify-between items-center mt-6">
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={toggleLike}
-                    className={`p-2 ${
-                      isLiked ? 'text-green-500' : 'text-white/70'
-                    }`}
-                  >
-                    <Heart className={isLiked ? 'fill-current' : ''} />
-                  </motion.button>
-
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
+                {/* Additional Actions */}
+                <div className="w-full grid grid-cols-4 gap-4">
+                  <ActionButton
+                    icon={Music}
+                    label="Lyrics"
+                    active={showLyrics}
                     onClick={toggleLyricsView}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-full ${
-                      showLyrics
-                        ? 'bg-green-500/20 text-green-500'
-                        : 'bg-white/10 text-white/70'
-                    }`}
-                  >
-                    <Music className="w-5 h-5" />
-                    <span className="text-sm font-medium">Lyrics</span>
-                  </motion.button>
-
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    className="p-2 text-white/70"
-                  >
-                    <Download className="w-5 h-5" />
-                  </motion.button>
+                  />
+                  <ActionButton
+                    icon={Radio}
+                    label="Radio"
+                    onClick={() => console.log('Start radio')}
+                  />
+                  <ActionButton
+                    icon={Mic2}
+                    label="Sing"
+                    onClick={() => console.log('Start karaoke')}
+                  />
+                  <ActionButton
+                    icon={ListMusic}
+                    label="Queue"
+                    onClick={() => setShowQueue(true)}
+                  />
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Swipe Indicator */}
-            <motion.div
-              className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-white/20 rounded-full"
-              animate={{
-                opacity: [0.3, 0.6, 0.3],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
+            {/* More Options Modal */}
+            <AnimatePresence>
+              {showMoreOptions && (
+                <motion.div
+                  className="fixed inset-0 bg-black/80 z-50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowMoreOptions(false)} // Close modal on background click
+                >
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl"
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
+                  >
+                    <div className="p-4">
+                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+
+                      <div className="grid grid-cols-4 gap-4 mb-8">
+                        {moreOptionsItems.map((item, index) => (
+                          <ActionButton
+                            key={index}
+                            icon={item.icon}
+                            label={item.label}
+                            onClick={() => {
+                              item.action();
+                              setShowMoreOptions(false);
+                            }}
+                          />
+                        ))}
+                      </div>
+
+                      <button
+                        className="w-full py-4 text-white/60 hover:text-white transition-colors"
+                        onClick={() => setShowMoreOptions(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Audio Quality Menu */}
+            <AnimatePresence>
+              {showAudioMenu && (
+                <motion.div
+                  className="fixed inset-0 bg-black/80 z-50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowAudioMenu(false)} // Close modal on background click
+                >
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl"
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
+                  >
+                    <div className="p-4">
+                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+
+                      <h3 className="text-lg font-bold text-white mb-4">Audio Quality</h3>
+
+                      {(['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'] as AudioQuality[]).map((quality) => (
+                        <button
+                          key={quality}
+                          className={`w-full flex items-center justify-between p-4 rounded-lg mb-2
+                          ${audioQuality === quality ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                          onClick={() => {
+                            setAudioQuality(quality);
+                            setShowAudioMenu(false);
+                          }}
+                        >
+                          <div>
+                            <p className="text-white font-medium">{quality}</p>
+                            <p className="text-sm text-white/60">
+                              {quality === 'MAX' && 'HiFi Plus Quality (24-bit, up to 192kHz)'}
+                              {quality === 'HIGH' && 'HiFi Quality (16-bit, 44.1kHz)'}
+                              {quality === 'NORMAL' && 'High Quality (320kbps AAC)'}
+                              {quality === 'DATA_SAVER' && 'Data Saver (128kbps AAC)'}
+                            </p>
+                          </div>
+                          {quality === audioQuality && (
+                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                              <motion.div
+                                className="w-3 h-3 bg-white rounded-full"
+                                layoutId="quality-indicator"
+                              />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+
+                      <button
+                        className="w-full py-4 text-white/60 hover:text-white transition-colors mt-4"
+                        onClick={() => setShowAudioMenu(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Queue Modal */}
+            <AnimatePresence>
+              {showQueue && (
+                <motion.div
+                  className="fixed inset-0 bg-black/80 z-50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowQueue(false)} // Close modal on background click
+                >
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl max-h-[80%]"
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    onClick={(e) => e.stopPropagation()} // Prevent click from closing modal
+                  >
+                    <div className="p-4">
+                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+                      <h3 className="text-lg font-bold text-white mb-4">Up Next</h3>
+                      <div className="overflow-y-auto max-h-[60vh]">
+                        {queue.map((track, index) => (
+                          <div key={index} className="flex items-center space-x-4 p-2 hover:bg-white/10 rounded-lg">
+                            <img
+                              src={track.album.cover_medium}
+                              alt={track.title}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium truncate">{track.title}</p>
+                              <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
+                            </div>
+                            <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                              <MoreHorizontal className="w-5 h-5 text-white/60" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        className="w-full py-4 text-white/60 hover:text-white transition-colors mt-4"
+                        onClick={() => setShowQueue(false)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Lyrics View */}
-      <AnimatePresence>
-        {isExpanded && showLyrics && (
-          <EnhancedLyricsView
-            lyrics={lyrics}
-            currentLyricIndex={currentLyricIndex}
-            currentTrack={currentTrack}
-            onClose={() => {
-              toggleLyricsView();
-              setIsExpanded(false);
-            }}
-            isPlaying={isPlaying}
-            togglePlay={togglePlay}
-            formatTime={formatTime}
-            seekPosition={seekPosition}
-            duration={duration}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Audio Options Sheet */}
-      <AnimatePresence>
-        {showAudioOptions && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute inset-0 bg-black/95 backdrop-blur-xl"
-          >
-            {/* Add audio options content here */}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Queue Sheet */}
-      <AnimatePresence>
-        {showQueue && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute inset-0 bg-black/95 backdrop-blur-xl"
-          >
-            {/* Add queue content here */}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Equalizer */}
-      <AnimatePresence>
-        {showEqualizer && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute inset-0 bg-black/95 backdrop-blur-xl"
-          >
-            {/* Add equalizer content here */}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+    </div>
   );
 };
 
-const formatTime = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
 export default MobilePlayer;
-
