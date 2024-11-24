@@ -1,35 +1,106 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
+import type { Metadata, Viewport } from "next"
+import localFont from "next/font/local"
+import "./globals.css"
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
-});
+  display: "swap",
+  preload: true,
+})
+
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
-});
+  display: "swap",
+  preload: true,
+})
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export const metadata: Metadata = {
-  title: "Streamflix Music",
+  title: {
+    default: "Streamflix Music",
+    template: "%s | Streamflix Music",
+  },
   description: "Made by Custom",
-};
+  keywords: ["music", "streaming", "spotify", "clone", "nextjs"],
+  authors: [{ name: "Your Name" }],
+  creator: "Your Name",
+  publisher: "Your Name",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://your-domain.com",
+    siteName: "Streamflix Music",
+    title: "Streamflix Music",
+    description: "Made by Custom",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Streamflix Music",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Streamflix Music",
+    description: "Made by Custom",
+    images: ["/og-image.jpg"],
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.json",
+}
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+interface RootLayoutProps {
+  children: React.ReactNode
+}
+
+export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
-    <html lang="en">
+    <html 
+      lang="en" 
+      className="dark"
+      suppressHydrationWarning
+    >
+      <head />
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background min-h-screen`}
       >
-        {children}
+        <main className="relative flex min-h-screen flex-col">
+          {children}
+        </main>
+
+        {/* Skip to content button for accessibility */}
+        <a
+          href="#main-content"
+          className="fixed top-0 left-0 p-2 -translate-y-full focus:translate-y-0 bg-background z-50"
+        >
+          Skip to content
+        </a>
       </body>
     </html>
-  );
+  )
 }
+
+// Optional: Analytics or other global scripts
+export const runtime = "edge"
+export const preferredRegion = "auto"
