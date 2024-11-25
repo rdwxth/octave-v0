@@ -445,7 +445,7 @@ export function SpotifyClone() {
     } else if (queue.length > 1 || repeatMode === 'all') {
       skipTrack();
     } else {
-      setIsPlaying(false);
+      skipTrack();
     }
   }, [repeatMode, queue.length, skipTrack]);
   
