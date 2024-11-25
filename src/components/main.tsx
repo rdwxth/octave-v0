@@ -1004,189 +1004,27 @@ export function SpotifyClone() {
           </button>
         </footer>
         {/* Mobile Miniplayer */}
-        {/* {currentTrack && (
-          <div
-            className={`fixed bottom-16 left-0 right-0 bg-black rounded-lg p-4 transition-all duration-300 ${
-              miniplayerExpanded ? 'h-screen' : 'h-20'
-            }`}
-            onClick={() => setMiniplayerExpanded(!miniplayerExpanded)}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <img
-                  src={currentTrack.album.cover_medium}
-                  alt={currentTrack.title}
-                  className="w-12 h-12 rounded-md"
-                />
-                <div>
-                  <p className="font-semibold text-white">{currentTrack.title}</p>
-                  <p className="text-sm text-gray-400">{currentTrack.artist.name}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    toggleLike();
-                  }}
-                >
-                  <Heart
-                    className={`w-6 h-6 ${isLiked ? 'text-green-500 fill-current' : 'text-white'}`}
-                  />
-                </button>
-                <button
-                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    togglePlay();
-                  }}
-                >
-                  {isPlaying ? (
-                    <Pause className="w-8 h-8 text-white" />
-                  ) : (
-                    <Play className="w-8 h-8 text-white" />
-                  )}
-                </button>
-              </div>
-            </div>
-            {miniplayerExpanded && (
-              <div className="mt-8 h-[calc(100%-8rem)] flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                  <button
-                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      setMiniplayerExpanded(false);
-                    }}
-                  >
-                    <ChevronDown className="w-6 h-6 text-white" />
-                  </button>
-                  <button onClick={toggleMobileQueue}>
-                    <List className="w-6 h-6 text-white" />
-                  </button>
-                </div>
-                <img
-                  src={currentTrack.album.cover_medium}
-                  alt={currentTrack.title}
-                  className="w-64 h-64 mx-auto object-cover rounded-md mb-4"
-                />
-                <p className="text-2xl font-semibold text-white text-center">{currentTrack.title}</p>
-                <p className="text-lg text-gray-400 text-center mb-4">
-                  {currentTrack.artist.name}
-                </p>
-                <div className="flex justify-between items-center mb-4">
-                  <SkipBack
-                    className="w-6 h-6 text-white"
-                    onClick={(e: MouseEvent<SVGElement>) => {
-                      e.stopPropagation();
-                      previousTrack();
-                    }}
-                  />
-                  <button
-                    className="bg-white rounded-full p-3"
-                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      togglePlay();
-                    }}
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-8 h-8 text-black" />
-                    ) : (
-                      <Play className="w-8 h-8 text-black" />
-                    )}
-                  </button>
-                  <SkipForward
-                    className="w-6 h-6 text-white"
-                    onClick={(e: MouseEvent<SVGElement>) => {
-                      e.stopPropagation();
-                      skipTrack();
-                    }}
-                  />
-                </div>
-                <div className="mb-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration}
-                    value={seekPosition}
-                    onChange={handleSeek}
-                    className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs mt-1">
-                    <span className="text-white">{formatTime(seekPosition)}</span>
-                    <span className="text-white">{formatTime(duration)}</span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center mb-4">
-                  <Shuffle
-                    className={`w-5 h-5 cursor-pointer ${
-                      shuffleOn ? 'text-green-500' : 'text-gray-400'
-                    }`}
-                    onClick={(e: MouseEvent<SVGElement>) => {
-                      e.stopPropagation();
-                      shuffleQueue();
-                    }}
-                  />
-                  <button
-                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      toggleLyricsView();
-                    }}
-                  >
-                    <Music
-                      className={`w-5 h-5 ${showLyrics ? 'text-green-500' : 'text-gray-400'}`}
-                    />
-                  </button>
-                </div>
-                {showMobileQueue ? (
-                  <div className="flex-1 overflow-y-auto">
-                    <h3 className="text-lg font-semibold mb-2 text-white">Queue</h3>
-                    <div className="space-y-2">
-                      {queue.map((track, index) => (
-                        <TrackItem key={index} track={track} showArtist={false} />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 overflow-y-auto" ref={lyricsRef}>
-                    {lyrics.map((lyric, index) => (
-                      <p
-                        key={index}
-                        className={`text-lg mb-4 ${
-                          index === currentLyricIndex ? 'text-green-500 font-bold' : 'text-gray-400'
-                        }`}
-                      >
-                        {lyric.text}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )} */}
         {currentTrack && (
-  <MobilePlayer
-    currentTrack={currentTrack}
-    isPlaying={isPlaying}
-    togglePlay={togglePlay}
-    skipTrack={skipTrack}
-    previousTrack={previousTrack}
-    seekPosition={seekPosition}
-    duration={duration}
-    handleSeek={handleSeek} // Correctly typed
-    isLiked={isLiked}
-    toggleLike={toggleLike}
-    lyrics={lyrics}
-    currentLyricIndex={currentLyricIndex}
-    queue={queue}
-    shuffleOn={shuffleOn}
-    shuffleQueue={shuffleQueue}
-    showLyrics={showLyrics}
-    toggleLyricsView={toggleLyricsView}
-  />
-)}
+          <MobilePlayer
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            togglePlay={togglePlay}
+            skipTrack={skipTrack}
+            previousTrack={previousTrack}
+            seekPosition={seekPosition}
+            duration={duration}
+            handleSeek={handleSeek}
+            isLiked={isLiked}
+            toggleLike={toggleLike}
+            lyrics={lyrics}
+            currentLyricIndex={currentLyricIndex}
+            queue={queue}
+            shuffleOn={shuffleOn}
+            shuffleQueue={shuffleQueue}
+            showLyrics={showLyrics}
+            toggleLyricsView={toggleLyricsView}
+          />
+     )}
       </div>
       {/* Desktop View */}
       <div className="hidden md:flex flex-1 gap-2 p-2 overflow-y-auto custom-scrollbar">
@@ -1654,19 +1492,22 @@ export function SpotifyClone() {
                   />
                 </button>
               </div>
-                <div className="w-full flex items-center space-x-2">
-    <span className="text-xs">{formatTime(seekPosition)}</span>
-    <input
-      type="range"
-      min="0"
-      max={duration}
-      value={seekPosition}
-      onChange={handleSeekInputChange} // Use the new handler
-      className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
-    />
-    <span className="text-xs">{formatTime(duration)}</span>
-  </div>
+                
+              <div className="w-full flex items-center space-x-2">
+                <span className="text-xs">{formatTime(seekPosition)}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max={duration}
+                    value={seekPosition}
+                    onChange={handleSeekInputChange} // Use the new handler
+                    className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
+                  />
+                  <span className="text-xs">{formatTime(duration)}</span>
+                </div>
             </div>
+
+
             {/* Volume and Queue */}
             <div className="flex items-center space-x-4">
               <Volume2 className="w-5 h-5 text-gray-400" />
