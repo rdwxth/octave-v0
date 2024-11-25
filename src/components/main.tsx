@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
-const API_BASE_URL = 'https://reproduction-cardiff-increases-acquire.trycloudflare.com';
+const API_BASE_URL = 'https://walt-brazil-galleries-robert.trycloudflare.com';
 
 interface Track {
   id: string;
