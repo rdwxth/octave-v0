@@ -24,9 +24,17 @@ interface Album {
 interface Track {
   id: string;
   title: string;
-  artist: Artist;
-  album: Album;
+  artist: {
+    name: string;
+  };
+  album: {
+    title: string;
+    cover_medium: string;
+  };
 }
+let backClickTimeout: NodeJS.Timeout | null = null;
+let forwardClickTimeout: NodeJS.Timeout | null = null;
+
 
 interface Lyric {
   time: number;
@@ -46,6 +54,8 @@ interface MobilePlayerProps {
   duration: number;
   handleSeek: (time: number) => void; 
   isLiked: boolean;
+  repeatMode: RepeatMode;
+  setRepeatMode: (mode: RepeatMode) => void;
   toggleLike: () => void;
   lyrics: Lyric[];
   currentLyricIndex: number;
@@ -54,7 +64,11 @@ interface MobilePlayerProps {
   shuffleOn: boolean;
   shuffleQueue: () => void;
   queue: Track[];
+  currentTrackIndex: number;
+  onQueueItemClick: (track: Track, index: number) => void;
+  setIsPlayerOpen: (isOpen: boolean) => void;
 }
+
 
 interface SeekbarProps {
   progress: number;
@@ -107,6 +121,7 @@ const Seekbar: React.FC<SeekbarProps> = ({
 
   // Handle mouse move event during dragging
   const handleMouseMove = (e: MouseEvent) => {
+    e.preventDefault();
     if (isDragging) {
       const newProgress = calculateProgress(e.clientX);
       if (newProgress !== null) {
@@ -128,6 +143,7 @@ const Seekbar: React.FC<SeekbarProps> = ({
 
   // Handle touch move event during dragging
   const handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
     if (isDragging) {
       const touch = e.touches[0];
       const newProgress = calculateProgress(touch.clientX);
@@ -291,6 +307,7 @@ const ActionButton: React.FC<{
   </motion.button>
 );
 
+
 const MobilePlayer: React.FC<MobilePlayerProps> = ({
   currentTrack,
   isPlaying,
@@ -309,6 +326,9 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   shuffleOn,
   shuffleQueue,
   queue,
+  currentTrackIndex,
+  onQueueItemClick,
+  setIsPlayerOpen
 }) => {
   // State management
   const [isExpanded, setIsExpanded] = useState(false);
@@ -316,21 +336,82 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [connectedDevice] = useState<string | null>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [miniPlayerTouchStartY, setMiniPlayerTouchStartY] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [textOverflow, setTextOverflow] = useState(false);
   const [isSmallDevice, setIsSmallDevice] = useState(false);
+
+  const togglePlayer = () => {
+    setIsExpanded(!isExpanded);
+    setIsPlayerOpen(!isExpanded);
+  };
+  
+
 
   // Refs
   const playerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const miniPlayerRef = useRef<HTMLDivElement>(null);
 
+  const handleMiniPlayerTouchStart = (e: React.TouchEvent) => {
+    setMiniPlayerTouchStartY(e.touches[0].clientY);
+  };
+
+  
+  
+  const handleMiniPlayerTouchMove = (e: React.TouchEvent) => {
+    if (miniPlayerTouchStartY !== null) {
+      const deltaY = miniPlayerTouchStartY - e.touches[0].clientY;
+      if (deltaY > 50) {
+        setIsExpanded(true);
+        setMiniPlayerTouchStartY(null);
+      }
+    }
+  };
+  
+  const handleMiniPlayerTouchEnd = () => {
+    setMiniPlayerTouchStartY(null);
+  };
+
   // Motion controls
   const controls = useAnimation();
+
+  const handleBackClick = () => {
+    if (backClickTimeout) {
+      clearTimeout(backClickTimeout);
+      backClickTimeout = null;
+      previousTrack();
+    } else {
+      backClickTimeout = setTimeout(() => {
+        handleSeek(0);
+        backClickTimeout = null;
+      }, 300);
+    }
+  };
+
+  const handleForwardClick = () => {
+    if (forwardClickTimeout) {
+      clearTimeout(forwardClickTimeout);
+      forwardClickTimeout = null;
+      // Double click: Skip to the next track
+      skipTrack();
+    } else {
+      forwardClickTimeout = setTimeout(() => {
+        // Single click: Restart current track if near the end, or go to the next track
+        if (seekPosition > duration - 5) {
+          skipTrack();
+        } else {
+          handleSeek(duration); // Jump to the end of the current track
+        }
+        forwardClickTimeout = null;
+      }, 300);
+    }
+  };
 
   // Effect for viewport size detection
   useEffect(() => {
@@ -414,7 +495,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
 
   const actionButtons = [
     { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
-    { icon: Plus, label: 'Add to', onClick: () => console.log('Add to playlist') },
+    { icon: Plus, label: 'Add to', onClick: () => setShowAddToPlaylistModal(true) },
     { icon: Download, label: 'Download', onClick: () => console.log('Download') },
     { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
     { icon: Radio, label: 'Radio', onClick: () => console.log('Start radio') },
@@ -424,14 +505,26 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
 
   // Get visible action buttons based on screen size
   const getVisibleActionButtons = () => {
-    if (isSmallDevice) {
-      return actionButtons.slice(0, 3);
+    // Get the first 4 buttons to display
+    const visibleButtons = actionButtons.slice(0, 4);
+  
+    // Add the 'More' button if there are additional action buttons
+    if (actionButtons.length > 4) {
+      visibleButtons.push({
+        icon: MoreHorizontal,
+        label: 'More',
+        onClick: () => setShowMoreOptions(true), // Opens the modal or menu
+      });
     }
-    return actionButtons.slice(0, 4);
+  
+    return visibleButtons;
   };
+  
+  
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-50">
+    <div className="px-6 flex flex-col items-center">
+      <div className="fixed bottom-16 left-0 right-0 z-50">
       {/* Mini Player */}
       {!isExpanded && (
         <motion.div
@@ -442,10 +535,13 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
           }}
-          onClick={() => setIsExpanded(true)}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          onClick={togglePlayer}
+          onTouchStart={handleMiniPlayerTouchStart}
+          onTouchMove={handleMiniPlayerTouchMove}
+          onTouchEnd={handleMiniPlayerTouchEnd}
+          // onTouchStart={handleTouchStart}
+          // onTouchMove={handleTouchMove}
+          // onTouchEnd={handleTouchEnd}
           animate={controls}
         >
           <div className="p-3">
@@ -473,15 +569,12 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
               </div>
 
               <div className="flex items-center space-x-2">
-                <button
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    previousTrack();
-                  }}
-                >
-                  <SkipBack className="w-5 h-5 text-white" />
-                </button>
+              <button
+                className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                onClick={handleBackClick}
+              >
+                <SkipBack className="w-5 h-5 text-white" />
+              </button>
 
                 <button
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -498,14 +591,12 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                 </button>
 
                 <button
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    skipTrack();
-                  }}
+                  className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                  onClick={handleForwardClick}
                 >
-                  <SkipForward className="w-5 h-5 text-white" />
-                </button>
+                    <SkipForward className="w-5 h-5 text-white" />
+                  </button>
+
 
                 <button
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -523,13 +614,12 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
 
             {/* Mini Progress Bar */}
             <div className="mt-2">
-            
-<Seekbar
-  progress={seekPosition / duration}
-  handleSeek={handleSeek}
-  duration={duration}
-  isMiniplayer
-/>
+              <Seekbar
+                progress={seekPosition / duration}
+                handleSeek={handleSeek}
+                duration={duration}
+                isMiniplayer
+              />
             </div>
           </div>
         </motion.div>
@@ -555,7 +645,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
             <div className="flex items-center justify-between p-4">
               <button
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                onClick={() => setIsExpanded(false)}
+                onClick={togglePlayer}
               >
                 <ChevronDown className="w-6 h-6 text-white" />
               </button>
@@ -587,7 +677,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
             {/* Main Content */}
             <div className="px-4 flex flex-col items-center">
               {showLyrics ? (
-                <div className="h-[calc(100vh-32vh)] overflow-y-auto w-full">
+                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto overflow-hidden ">
                   <div className="flex items-center mb-6">
                     <button
                       onClick={toggleLyricsView}
@@ -598,23 +688,21 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                     <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
                   </div>
                   <div className="space-y-6">
-                    {lyrics.map((lyric, index) => (
-                      <motion.p
-                        key={index}
-                        className={`text-lg text-center ${
-                          index === currentLyricIndex ? 'text-white scale-105' : 'text-white/40'
-                        }`}
-                        animate={{
-                          opacity: index === currentLyricIndex ? 1 : 0.4,
-                        }}
-                      >
-                        {lyric.text}
-                      </motion.p>
-                    ))}
+                  {lyrics.map((lyric, index) => (
+                    <motion.p
+                      key={index}
+                      className={`text-lg text-center ${
+                        index === currentLyricIndex ? 'text-white scale-105' : 'text-white/40'
+                      }`}
+                      onClick={() => handleSeek(lyric.time)}
+                    >
+                      {lyric.text}
+                    </motion.p>
+                  ))}
                   </div>
                 </div>
               ) : showQueue ? (
-                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto">
+                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto overflow-hidden">
                   <div className="flex items-center mb-6">
                     <button
                       onClick={() => setShowQueue(false)}
@@ -627,11 +715,14 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                   <div className="space-y-4">
                     {queue.map((track, index) => (
                       <motion.div
-                        key={index}
-                        className="flex items-center space-x-4 p-2 hover:bg-white/10 rounded-lg"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
+                      key={index}
+                      className={`flex items-center space-x-4 p-2 rounded-lg ${
+                        track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
+                      } ${index < currentTrackIndex ? 'opacity-50' : ''}`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => onQueueItemClick(track, index)}
+                    >
                         <div className="w-12 h-12 relative rounded-lg overflow-hidden">
                           <img
                             src={track.album.cover_medium}
@@ -687,11 +778,10 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                   {/* Seekbar and Time */}
                   <div className="w-full mb-8 mt-6">
                   <Seekbar
-  progress={seekPosition / duration}
-  handleSeek={handleSeek}
-  duration={duration}
-/>
-
+                    progress={seekPosition / duration}
+                    handleSeek={handleSeek}
+                    duration={duration}
+                  />
 
                   <div className="flex justify-between text-sm text-white/60 mt-2">
                       <span>{formatTime(seekPosition)}</span>
@@ -711,12 +801,12 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                     </button>
 
                     <div className="flex items-center space-x-8">
-                      <button
-                        className="p-3 hover:bg-white/10 rounded-full transition-colors"
-                        onClick={previousTrack}
-                      >
-                        <SkipBack className="w-6 h-6 text-white" />
-                      </button>
+                    <button
+                      className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                      onClick={handleBackClick}
+                    >
+                      <SkipBack className="w-6 h-6 text-white" />
+                    </button>
 
                       <motion.button
                         className="w-16 h-16 rounded-full bg-white flex items-center justify-center
@@ -731,24 +821,20 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                         )}
                       </motion.button>
 
-                      <button className="p-3 hover:bg-white/10 rounded-full transition-colors" onClick={skipTrack}>
+                      <button
+                        className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                        onClick={handleForwardClick}
+                      >
                         <SkipForward className="w-6 h-6 text-white" />
                       </button>
+
                     </div>
 
                     <button
-                      onClick={() =>
-                        setRepeatMode((current) => {
-                          switch (current) {
-                            case 'off':
-                              return 'all';
-                            case 'all':
-                              return 'one';
-                            default:
-                              return 'off';
-                          }
-                        })
-                      }
+                      onClick={() => {
+                        const nextMode = repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off';
+                        setRepeatMode(nextMode);
+                      }}
                       className="p-3 rounded-full transition-colors"
                     >
                       {repeatMode === 'one' ? (
@@ -762,7 +848,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                   </div>
 
                   {/* Responsive Action Buttons Grid */}
-                  <div className={`w-full grid ${isSmallDevice ? 'grid-cols-3' : 'grid-cols-4'} gap-4 mb-6`}>
+                  <div className={`w-full grid grid-cols-4 gap-4 mb-6`}>
                     {getVisibleActionButtons().map((btn, index) => (
                       <ActionButton
                         key={index}
@@ -772,14 +858,8 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                         onClick={btn.onClick}
                       />
                     ))}
-                    {!isSmallDevice && (
-                      <ActionButton
-                        icon={MoreHorizontal}
-                        label="More"
-                        onClick={() => setShowMoreOptions(true)}
-                      />
-                    )}
                   </div>
+
                 </>
               )}
             </div>
@@ -957,12 +1037,31 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
           transform: scale(1.2);
         }
 
+      .overflow-hidden {
+        overflow-x: hidden;
+      }
+
+
         /* Media queries for responsive layout */
         @media (max-width: 375px) {
           .grid-cols-4 {
             grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
+
+        @media (max-width: 375px) {
+          /* Adjust sizes for small screens */
+          .text-2xl {
+            font-size: 1.5rem;
+          }
+          .w-64 {
+            width: 16rem;
+          }
+          .h-64 {
+            height: 16rem;
+          }
+        }
+
 
         /* Enhanced touch area for better mobile interaction */
         @media (max-width: 640px) {
@@ -988,6 +1087,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
           white-space: nowrap;
         }
       `}</style>
+    </div>
     </div>
   );
 };

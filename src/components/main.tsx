@@ -13,6 +13,7 @@ import React, {
 } from 'react';
 import MobilePlayer from './mobilePlayer';
 
+
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,7 +57,6 @@ interface Track {
     title: string;
     cover_medium: string;
   };
-  [key: string]: string | number | { name: string } | { title: string; cover_medium: string };
 }
 
 interface Playlist {
@@ -98,6 +98,8 @@ export function SpotifyClone() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [jumpBackIn, setJumpBackIn] = useState<Track[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [showLibrary, setShowLibrary] = useState<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [shows, setShows] = useState<{ name: string; image: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
@@ -107,6 +109,7 @@ export function SpotifyClone() {
   const [previousTracks, setPreviousTracks] = useState<Track[]>([]);
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(1);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
   const [seekPosition, setSeekPosition] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [showQueue, setShowQueue] = useState<boolean>(false);
@@ -117,6 +120,8 @@ export function SpotifyClone() {
   const [newPlaylistName, setNewPlaylistName] = useState<string>('');
   const [newPlaylistImage, setNewPlaylistImage] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState<boolean>(false);
   const [selectedPlaylistForAdd, setSelectedPlaylistForAdd] = useState<string | null>(null);
   const [showSearchInPlaylistCreation, setShowSearchInPlaylistCreation] = useState<boolean>(false);
@@ -133,6 +138,13 @@ export function SpotifyClone() {
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const preloadedAudios = useRef<HTMLAudioElement[]>([new Audio(), new Audio(), new Audio()]);
   const lyricsRef = useRef<HTMLDivElement>(null);
+
+  const onQueueItemClick = (track: Track, index: number) => {
+    setCurrentTrack(track);
+    setQueue(queue.slice(index));
+    setPreviousTracks([...previousTracks, ...queue.slice(0, index)]);
+  };
+  
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -427,8 +439,16 @@ export function SpotifyClone() {
   };
 
   const handleTrackEnd = useCallback(() => {
-    skipTrack();
-  }, [skipTrack]);
+    if (repeatMode === 'one') {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+    } else if (queue.length > 1 || repeatMode === 'all') {
+      skipTrack();
+    } else {
+      setIsPlaying(false);
+    }
+  }, [repeatMode, queue.length, skipTrack]);
+  
 
   const handleTimeUpdate = useCallback(() => {
     setSeekPosition(audioRef.current.currentTime);
@@ -974,7 +994,8 @@ export function SpotifyClone() {
           )}
         </main>
         {/* Mobile Footer */}
-        <footer
+        {!isPlayerOpen && (
+          <footer
           className="bg-black p-4 flex justify-around fixed bottom-0 left-0 right-0"
           style={{ zIndex: 9999 }}
         >
@@ -996,17 +1017,22 @@ export function SpotifyClone() {
             <span className="text-xs mt-1">Search</span>
           </button>
           <button
-            className="flex flex-col items-center text-gray-400 hover:text-white"
-            onClick={() => setShowCreatePlaylist(true)}
-          >
-            <Library className="w-6 h-6" />
-            <span className="text-xs mt-1">Your Library</span>
-          </button>
+          className="flex flex-col items-center text-gray-400 hover:text-white"
+          onClick={() => {
+            setShowLibrary(true);
+          }}
+        >
+          <Library className="w-6 h-6" />
+          <span className="text-xs mt-1">Your Library</span>
+        </button>
+
         </footer>
+        )}
         {/* Mobile Miniplayer */}
         {currentTrack && (
           <MobilePlayer
             currentTrack={currentTrack}
+            currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
             isPlaying={isPlaying}
             togglePlay={togglePlay}
             skipTrack={skipTrack}
@@ -1015,6 +1041,8 @@ export function SpotifyClone() {
             duration={duration}
             handleSeek={handleSeek}
             isLiked={isLiked}
+            repeatMode={repeatMode}
+            setRepeatMode={setRepeatMode}
             toggleLike={toggleLike}
             lyrics={lyrics}
             currentLyricIndex={currentLyricIndex}
@@ -1023,6 +1051,8 @@ export function SpotifyClone() {
             shuffleQueue={shuffleQueue}
             showLyrics={showLyrics}
             toggleLyricsView={toggleLyricsView}
+            onQueueItemClick={onQueueItemClick}
+            setIsPlayerOpen={setIsPlayerOpen} 
           />
      )}
       </div>
