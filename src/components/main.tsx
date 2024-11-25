@@ -352,6 +352,7 @@ export function SpotifyClone() {
 
   const playTrackFromSource = async (track: Track) => {
     const offlineTrack = await getOfflineTrack(track.id);
+    console.log(offlineTrack);
     if (offlineTrack) {
       audioRef.current.src = offlineTrack;
     } else {
@@ -360,10 +361,6 @@ export function SpotifyClone() {
     audioRef.current.play();
   };
 
-  const getOfflineTrack = async (trackId: string): Promise<string | null> => {
-    const offlineTracks = JSON.parse(localStorage.getItem('offlineTracks') || '{}') as Record<string, string>;
-    return offlineTracks[trackId] || null;
-  };
 
   const playTrack = (track: Track) => {
     if (currentTrack) {
@@ -678,11 +675,63 @@ export function SpotifyClone() {
       const offlineTracks = JSON.parse(localStorage.getItem('offlineTracks') || '{}') as Record<string, string>;
       offlineTracks[track.id] = objectURL;
       localStorage.setItem('offlineTracks', JSON.stringify(offlineTracks));
+
+      // Save the blob to IndexedDB for permanent storage
+      const db = await openDatabase();
+      const transaction = db.transaction('tracks', 'readwrite');
+      const store = transaction.objectStore('tracks');
+      store.put({ id: track.id, blob });
     } catch (error) {
       console.error('Error downloading track:', error);
     }
   };
 
+  const openDatabase = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('OctaveDB', 1);
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains('tracks')) {
+          db.createObjectStore('tracks', { keyPath: 'id' });
+        }
+      };
+
+      request.onsuccess = (event) => {
+        resolve((event.target as IDBOpenDBRequest).result);
+      };
+
+      request.onerror = (event) => {
+        reject((event.target as IDBOpenDBRequest).error);
+      };
+    });
+  };
+
+  const getOfflineTrack = async (trackId: string): Promise<string | null> => {
+    // Check IndexedDB for the track blob
+    const db = await openDatabase();
+    const transaction = db.transaction('tracks', 'readonly');
+    const store = transaction.objectStore('tracks');
+    console.log(store);
+    const request = store.get(trackId);
+
+    return new Promise((resolve, reject) => {
+      request.onsuccess = (event) => {
+        const result = (event.target as IDBRequest).result;
+        if (result) {
+          const objectURL = URL.createObjectURL(result.blob);
+          resolve(objectURL);
+        } else {
+          resolve(null);
+        }
+      };
+
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  };
+  
   const toggleLike = (track: Track | null = currentTrack) => {
     if (!track) return;
 
@@ -900,21 +949,25 @@ export function SpotifyClone() {
                       Smart Shuffle
                     </button>
                     <button
-                      className="bg-gray-800 text-white rounded-full px-4 py-2 text-sm font-semibold"
+                      className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                      isDownloading ? 'bg-gray-800 text-white' : 'bg-gray-800 text-white'
+                      }`}
                       onClick={() => downloadPlaylist(currentPlaylist)}
+                      disabled={isDownloading}
                     >
                       {isDownloading ? (
-                        <div className="relative">
-                          <Download className="w-4 h-4" />
-                          <div
-                            className="absolute inset-0 rounded-full border-2 border-green-500"
-                            style={{
-                              clipPath: `circle(${downloadProgress}% at 50% 50%)`,
-                            }}
-                          ></div>
-                        </div>
+                      <div className="relative flex items-center">
+                        <Download className="w-4 h-4 mr-2" />
+                        <span>{Math.round(downloadProgress)}%</span>
+                        <div
+                        className="absolute inset-0 rounded-full border-2 border-green-500"
+                        style={{
+                          clipPath: `circle(${downloadProgress}% at 50% 50%)`,
+                        }}
+                        ></div>
+                      </div>
                       ) : (
-                        <Download className="w-4 h-4" />
+                      <Download className="w-4 h-4" />
                       )}
                     </button>
                   </div>
