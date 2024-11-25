@@ -13,6 +13,12 @@ import React, {
 } from 'react';
 import MobilePlayer from './mobilePlayer';
 
+declare global {
+  interface Window {
+    deferredPrompt: any;
+  }
+}
+
 import {
   Home,
   Search,
@@ -33,6 +39,7 @@ import {
   Download,
   Heart,
   Music,
+  LogOut,
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
@@ -86,7 +93,7 @@ interface TrackItemProps {
 }
 
 export function SpotifyClone() {
-  const [view, setView] = useState<'home' | 'search' | 'playlist'>('home');
+  const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings'>('home');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [jumpBackIn, setJumpBackIn] = useState<Track[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -553,56 +560,72 @@ export function SpotifyClone() {
       </div>
     );
   };
+  const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false }: TrackItemProps) => {
+    const [isHovered, setIsHovered] = useState(false);
 
-  const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false }: TrackItemProps) => (
-    <div
-      className="group flex items-center space-x-4 bg-gray-800 bg-opacity-40 rounded-lg p-2 relative"
-      onContextMenu={(e) => handleContextMenu(e, track)}
-    >
-      <div className="relative">
-        <img src={track.album.cover_medium} alt={track.title} className="w-12 h-12 rounded-md" />
-        <button
-          className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => playTrack(track)}
-        >
-          <Play className="w-6 h-6 text-white" />
-        </button>
-      </div>
-      <div className="flex-grow">
-        <p className="font-medium">{track.title}</p>
-        {showArtist && <p className="text-sm text-gray-400">{track.artist.name}</p>}
-      </div>
-      {inPlaylistCreation ? (
-        <input
-          type="checkbox"
-          checked={selectedTracksForNewPlaylist.some((t) => t.id === track.id)}
-          onChange={() => toggleTrackSelection(track)}
-          className="ml-auto"
-        />
-      ) : (
-        <div className="flex space-x-2 md:hidden">
-          <button
-            className="bg-gray-700 rounded-full p-2"
-            onClick={(e) => {
-              e.stopPropagation();
-              addToQueue(track);
-            }}
-          >
-            <Plus className="w-4 h-4 text-white" />
-          </button>
-          <button
-            className="bg-gray-700 rounded-full p-2"
-            onClick={(e) => {
-              e.stopPropagation();
-              openAddToPlaylistModal(track);
-            }}
-          >
-            <Library className="w-4 h-4 text-white" />
-          </button>
+    return (
+      <div
+        className="group flex items-center space-x-4 bg-gray-800 bg-opacity-40 rounded-lg p-2 relative cursor-pointer"
+        onClick={() => playTrack(track)}
+        onContextMenu={(e) => handleContextMenu(e, track)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className="relative">
+          <img src={track.album.cover_medium} alt={track.title} className="w-12 h-12 rounded-md" />
+          {isHovered && (
+            <button
+              className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                playTrack(track);
+              }}
+            >
+              <Play className="w-6 h-6 text-white" />
+            </button>
+          )}
         </div>
-      )}
-    </div>
-  );
+        <div className="flex-grow">
+          <p className="font-medium">{track.title}</p>
+          {showArtist && <p className="text-sm text-gray-400">{track.artist.name}</p>}
+        </div>
+        {inPlaylistCreation ? (
+          <input
+            type="checkbox"
+            checked={selectedTracksForNewPlaylist.some((t) => t.id === track.id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              toggleTrackSelection(track);
+            }}
+            className="ml-auto"
+          />
+        ) : (
+          isHovered && (
+            <div className="flex space-x-2 transition-opacity duration-300">
+              <button
+                className="bg-gray-700 rounded-full p-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addToQueue(track);
+                }}
+              >
+                <Plus className="w-4 h-4 text-white" />
+              </button>
+              <button
+                className="bg-gray-700 rounded-full p-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openAddToPlaylistModal(track);
+                }}
+              >
+                <Library className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          )
+        )}
+      </div>
+    );
+  };
 
   const playPlaylist = (playlist: Playlist) => {
     setQueue(playlist.tracks);
@@ -1175,51 +1198,51 @@ export function SpotifyClone() {
           />
         )}
         {/* Sidebar */}
-        <aside className="w-64 bg-gray-900 rounded-lg p-4 overflow-y-auto custom-scrollbar">
+        <aside className="w-64 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 overflow-y-auto custom-scrollbar">
           <nav className="space-y-4">
             {/* Main Navigation */}
-            <div className="bg-gray-800 rounded-lg p-3 space-y-2">
+            <div className="bg-gray-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-3 space-y-2">
               <button
-                className="flex items-center text-gray-300 hover:text-white w-full"
-                onClick={() => setView('home')}
+          className="flex items-center text-white hover:text-white w-full py-2 px-3 rounded-lg transition-colors duration-200"
+          onClick={() => setView('home')}
               >
-                <Home className="w-6 h-6 mr-3" />
-                Home
+          <Home className="w-6 h-6 mr-3" />
+          Home
               </button>
               <button
-                className="flex items-center text-gray-300 hover:text-white w-full"
-                onClick={() => setView('search')}
+          className="flex items-center text-white hover:text-white w-full py-2 px-3 rounded-lg transition-colors duration-200"
+          onClick={() => setView('search')}
               >
-                <Search className="w-6 h-6 mr-3" />
-                Search
+          <Search className="w-6 h-6 mr-3" />
+          Search
               </button>
             </div>
             {/* Your Library */}
-            <div className="bg-gray-800 rounded-lg p-3">
+            <div className="bg-gray-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center text-gray-300">
-                  <Library className="w-6 h-6 mr-3" />
-                  Your Library
-                </div>
-                <Plus
-                  className="w-5 h-5 text-gray-300 hover:text-white cursor-pointer"
-                  onClick={() => setShowCreatePlaylist(true)}
-                />
+          <div className="flex items-center text-white">
+            <Library className="w-6 h-6 mr-3" />
+            Your Library
+          </div>
+          <Plus
+            className="w-5 h-5 text-white hover:text-white cursor-pointer transition-colors duration-200"
+            onClick={() => setShowCreatePlaylist(true)}
+          />
               </div>
               <div className="space-y-2">
-                {playlists.map((playlist, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-3 bg-gray-700 bg-opacity-30 rounded-md p-2 cursor-pointer"
-                    onClick={() => openPlaylist(playlist)}
-                  >
-                    <img src={playlist.image} alt={playlist.name} className="w-10 h-10 rounded-md" />
-                    <div>
-                      <p className="text-sm">{playlist.name}</p>
-                      <p className="text-xs text-gray-400">Playlist</p>
-                    </div>
-                  </div>
-                ))}
+          {playlists.map((playlist, index) => (
+            <div
+              key={index}
+              className="flex items-center space-x-3 bg-gray-800 bg-opacity-40 backdrop-blur-sm rounded-md p-2 cursor-pointer hover:bg-gray-600 transition-colors duration-200"
+              onClick={() => openPlaylist(playlist)}
+            >
+              <img src={playlist.image} alt={playlist.name} className="w-10 h-10 rounded-md" />
+              <div>
+                <p className="text-sm text-white">{playlist.name}</p>
+                <p className="text-xs text-gray-400">Playlist</p>
+              </div>
+            </div>
+          ))}
               </div>
             </div>
           </nav>
@@ -1239,41 +1262,71 @@ export function SpotifyClone() {
                 className="w-full p-2 rounded-full bg-gray-800 text-white"
               />
             </form>
-            <div className="relative">
-              <button className="bg-white text-black rounded-full px-4 py-2 text-sm font-semibold ml-4">
+            <div className="relative flex items-center">
+              {!window.matchMedia('(display-mode: standalone)').matches && (
+              <button
+                className="bg-white text-black rounded-full px-4 py-2 text-sm font-semibold ml-4"
+                onClick={() => {
+                const installPromptEvent = window.deferredPrompt;
+                if (installPromptEvent) {
+                  installPromptEvent.prompt();
+                    installPromptEvent.userChoice.then((choiceResult: { outcome: 'accepted' | 'dismissed' }) => {
+                    if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                    } else {
+                    console.log('User dismissed the install prompt');
+                    }
+                    window.deferredPrompt = null;
+                    });
+                }
+                }}
+              >
                 Install App
               </button>
-            </div>
-            {/* User Menu */}
-            <div className="relative">
+              )}
+              {/* User Menu */}
+              <div className="relative ml-4">
               <button
                 className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
                 <User className="w-5 h-5" />
               </button>
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl z-10">
+                {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-gray-900 rounded-lg shadow-xl z-10 border border-gray-700">
                   <button
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
-                    onClick={() => console.log('Settings')}
+                  className="flex items-center px-6 py-3 text-lg text-gray-300 hover:bg-gray-700 w-full text-left rounded-t-lg"
+                  onClick={() => {
+                  setView('settings');
+                  setShowUserMenu(false);
+                  }}
                   >
-                    Settings
+                  <Cog className="w-5 h-5 mr-3" />
+                  Settings
                   </button>
                   <button
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
-                    onClick={() => console.log('Profile')}
+                  className="flex items-center px-6 py-3 text-lg text-gray-300 hover:bg-gray-700 w-full text-left"
+                  onClick={() => {
+                  console.log('Profile');
+                  setShowUserMenu(false);
+                  }}
                   >
-                    Profile
+                  <User className="w-5 h-5 mr-3" />
+                  Profile
                   </button>
                   <button
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
-                    onClick={() => console.log('Log out')}
+                  className="flex items-center px-6 py-3 text-lg text-gray-300 hover:bg-gray-700 w-full text-left rounded-b-lg"
+                  onClick={() => {
+                  console.log('Log out');
+                  setShowUserMenu(false);
+                  }}
                   >
-                    Log out
+                  <LogOut className="w-5 h-5 mr-3" />
+                  Log out
                   </button>
                 </div>
-              )}
+                )}
+              </div>
             </div>
           </header>
           {/* Main Content Area */}
@@ -1294,7 +1347,89 @@ export function SpotifyClone() {
                 ))}
               </div>
             </div>
+          ) : view === 'settings' ? (
+            <section>
+              <h2 className="text-2xl font-bold mb-4">Settings</h2>
+              <div className="space-y-4">
+              <div className="bg-gray-800 bg-opacity-40 rounded-lg p-4">
+                <h3 className="text-xl font-semibold mb-2">Account</h3>
+                <p className="text-gray-400">Manage your account settings and set e-mail preferences.</p>
+              </div>
+              <div className="bg-gray-800 bg-opacity-40 rounded-lg p-4">
+                <h3 className="text-xl font-semibold mb-2">Playback</h3>
+                <p className="text-gray-400">Customize your playback settings.</p>
+                <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Default Volume</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={volume}
+                  onChange={(e) => {
+                  const newVolume = parseFloat(e.target.value);
+                  setVolume(newVolume);
+                  localStorage.setItem('volume', newVolume.toString());
+                  }}
+                  className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
+                />
+                </div>
+                <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Default Music Quality</label>
+                <select
+                  className="w-full p-2 rounded bg-gray-700 text-white"
+                  onChange={(e) => {
+                  const quality = e.target.value;
+                  localStorage.setItem('musicQuality', quality);
+                  }}
+                  defaultValue={localStorage.getItem('musicQuality') || 'high'}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+                </div>
+              </div>
+              <div className="bg-gray-800 bg-opacity-40 rounded-lg p-4">
+                <h3 className="text-xl font-semibold mb-2">Privacy</h3>
+                <p className="text-gray-400">Control your privacy settings and data usage.</p>
+                <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Cache Music</label>
+                <input
+                  type="checkbox"
+                  checked={localStorage.getItem('cacheMusic') === 'true'}
+                  onChange={(e) => {
+                  const cacheMusic = e.target.checked;
+                  localStorage.setItem('cacheMusic', cacheMusic.toString());
+                  }}
+                  className="w-4 h-4 text-green-500 bg-gray-700 rounded border-gray-600 focus:ring-green-500"
+                />
+                </div>
+              </div>
+              <div className="bg-gray-800 bg-opacity-40 rounded-lg p-4">
+                <h3 className="text-xl font-semibold mb-2">Notifications</h3>
+                <p className="text-gray-400">Set your notification preferences.</p>
+              </div>
+              <div className="bg-gray-800 bg-opacity-40 rounded-lg p-4">
+                <h3 className="text-xl font-semibold mb-2">Beta Features</h3>
+                <p className="text-gray-400">Toggle beta features on or off.</p>
+                <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Enable Beta Features</label>
+                <input
+                  type="checkbox"
+                  checked={localStorage.getItem('betaFeatures') === 'true'}
+                  onChange={(e) => {
+                  const betaFeatures = e.target.checked;
+                  localStorage.setItem('betaFeatures', betaFeatures.toString());
+                  }}
+                  className="w-4 h-4 text-green-500 bg-gray-700 rounded border-gray-600 focus:ring-green-500"
+                />
+                </div>
+              </div>
+              </div>
+            </section>
           ) : view === 'playlist' && currentPlaylist ? (
+ 
             <section>
               {/* Playlist Header */}
               <div className="relative h-64 mb-4">
@@ -1365,7 +1500,16 @@ export function SpotifyClone() {
                 ))}
               </div>
             </section>
-          ) : (
+          ) : view === 'search' ? (
+            <section>
+              <h2 className="text-2xl font-bold mb-4">Search Results</h2>
+              <div className="grid grid-cols-2 gap-4">
+              {searchResults.map((track) => (
+                <TrackItem key={track.id} track={track} />
+              ))}
+              </div>
+            </section>
+            ) : (
             <>
               <h1 className="text-3xl font-bold mb-6">Good morning</h1>
               {/* Recently Played Playlists */}
@@ -1429,19 +1573,35 @@ export function SpotifyClone() {
         </main>
         {/* Desktop Queue */}
         {showQueue && (
-          <aside className="w-64 bg-gray-900 rounded-lg p-4 overflow-y-auto custom-scrollbar">
+          <aside className="w-64 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 overflow-y-auto custom-scrollbar">
             <h2 className="text-xl font-bold mb-4">Queue</h2>
-            <div className="space-y-2">
-              {queue.map((track, index) => (
-                <TrackItem key={index} track={track} showArtist={false} />
-              ))}
-            </div>
+            {queue.length === 0 ? (
+              <div>
+          <p className="text-gray-400 mb-4">Your queue is empty.</p>
+            <button
+            className="w-full px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-600 transition-all duration-200"
+            onClick={async () => {
+              const mostPlayedArtists = getMostPlayedArtists();
+              const randomSongs = await fetchRandomSongs(mostPlayedArtists);
+              setQueue(randomSongs);
+            }}
+            >
+            Add Suggestions
+            </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+          {queue.map((track, index) => (
+            <TrackItem key={index} track={track} showArtist={false} />
+          ))}
+              </div>
+            )}
           </aside>
         )}
       </div>
       {/* Desktop Footer */}
       {currentTrack && (
-        <footer className="bg-gray-900 p-4 hidden md:block rounded-lg mx-2 mb-2">
+        <footer className="bg-gradient-to-b from-black to-bg-blue-900 p-4 hidden md:block rounded-lg mx-2 mb-2">
           <div className="flex items-center justify-between">
             {/* Now Playing */}
             <div className="flex items-center space-x-4">
