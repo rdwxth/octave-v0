@@ -230,14 +230,12 @@ export function SpotifyClone() {
 
     preloadQueueTracks(savedQueue);
 
-    audioRef.current.addEventListener('ended', handleTrackEnd);
     audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
     audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     fetchSearchResults('Kendrick Lamar');
 
     return () => {
-      audioRef.current.removeEventListener('ended', handleTrackEnd);
       audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
       // eslint-disable-next-line react-hooks/exhaustive-deps
       audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -436,15 +434,89 @@ export function SpotifyClone() {
   };
 
   const handleTrackEnd = useCallback(() => {
-    if (repeatMode === 'one') {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play();
-    } else if (queue.length > 1 || repeatMode === 'all') {
+    console.log("Track ended, current repeat mode:", repeatMode); // Add this
+  // First, let's handle repeat mode 'one' (single track repeat)
+  if (repeatMode === 'one') {
+    console.log("Repeat mode 'one' detected, attempting to restart track"); // Add this
+    if (audioRef.current) {
+      const playPromise = async () => {
+        try {
+          console.log("Resetting currentTime and attempting to play"); // Add this
+          audioRef.current.currentTime = 0;
+          await audioRef.current.play();
+          setIsPlaying(true);
+          console.log("Successfully restarted track"); // Add this
+        } catch (error) {
+          console.error('Error restarting track:', error);
+          setIsPlaying(false);
+        }
+      };
+      playPromise();
+    }
+    return;
+  }
+  console.log("Not in repeat one mode, continuing with normal flow");
+  
+    // Handle repeat mode 'all' (repeat entire queue)
+    if (repeatMode === 'all') {
+      if (queue.length <= 1) {
+        // If there's only one track in the queue, replay it
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          void audioRef.current.play();
+        }
+      } else {
+        // If we're at the end of the queue, reset to the beginning
+        const currentIndex = queue.findIndex(track => track.id === currentTrack?.id);
+        if (currentIndex === queue.length - 1) {
+          // We're at the end, start over from the beginning
+          setCurrentTrack(queue[0]);
+          setQueue(queue); // This preserves the queue order
+        } else {
+          // Not at the end, just move to next track
+          skipTrack();
+        }
+      }
+      return;
+    }
+  
+    // Default behavior (repeatMode === 'off')
+    if (queue.length > 1) {
       skipTrack();
     } else {
-      skipTrack();
+      // If we're at the end of the queue and not repeating, stop playback
+      setIsPlaying(false);
     }
-  }, [repeatMode, queue.length, skipTrack]);
+  }, [repeatMode, queue, currentTrack, skipTrack, setIsPlaying]);
+
+  // Effect for managing audio loop property
+useEffect(() => {
+  if (audioRef.current) {
+    // Only set loop to true if we're in single track repeat mode
+    console.log("Setting audio loop property, repeatMode:", repeatMode); // Add this
+    audioRef.current.loop = repeatMode === 'one';
+  }
+}, [repeatMode]);
+
+// Effect for setting up the ended event listener
+useEffect(() => {
+  // Get reference to the audio element
+  const audio = audioRef.current;
+  
+  // Create the event handler
+  const handleEnded = () => {
+    handleTrackEnd();
+  };
+  
+  // Add the event listener
+  audio.addEventListener('ended', handleEnded);
+
+  // Cleanup function to remove the event listener
+  return () => {
+    audio.removeEventListener('ended', handleEnded);
+  };
+}, [handleTrackEnd]); // Only re-run if handleTrackEnd changes
+  
   
 
   const handleTimeUpdate = useCallback(() => {

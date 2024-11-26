@@ -85,8 +85,6 @@ const formatTime = (seconds: number): string => {
 };
 
 
-// mobilePlayer.tsx
-
 const Seekbar: React.FC<SeekbarProps> = ({
   progress,
   handleSeek,
@@ -121,7 +119,7 @@ const Seekbar: React.FC<SeekbarProps> = ({
 
   // Handle mouse move event during dragging
   const handleMouseMove = (e: MouseEvent) => {
-    e.preventDefault();
+    // e.preventDefault();
     if (isDragging) {
       const newProgress = calculateProgress(e.clientX);
       if (newProgress !== null) {
@@ -143,7 +141,7 @@ const Seekbar: React.FC<SeekbarProps> = ({
 
   // Handle touch move event during dragging
   const handleTouchMove = (e: TouchEvent) => {
-    e.preventDefault();
+    // e.preventDefault();
     if (isDragging) {
       const touch = e.touches[0];
       const newProgress = calculateProgress(touch.clientX);
@@ -315,6 +313,8 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   skipTrack,
   previousTrack,
   seekPosition,
+  repeatMode,        
+  setRepeatMode,
   duration,
   handleSeek,
   isLiked,
@@ -333,7 +333,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   // State management
   const [isExpanded, setIsExpanded] = useState(false);
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('MAX');
-  const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+  // const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
@@ -350,6 +350,13 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
     setIsExpanded(!isExpanded);
     setIsPlayerOpen(!isExpanded);
   };
+
+  // Add this somewhere near the top of the component body
+useEffect(() => {
+  console.log("MobilePlayer repeatMode state:", repeatMode);
+}, [repeatMode]);
+
+// In MobilePlayer.tsx, where you handle repeat mode changes
   
 
 
