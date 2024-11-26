@@ -500,6 +500,31 @@ useEffect(() => {
       setTouchStart(null);
     }
   };
+
+
+  const handleMiniPlayerDragEnd = (info: PanInfo) => {
+    const threshold = 100; // Minimum drag distance to switch songs
+  
+    if (info.offset.x > threshold) {
+      // Swiped right -> Previous track
+      controls.start({ x: '100%', transition: { duration: 0.3 } }).then(() => {
+        previousTrack();
+        controls.set({ x: '-100%' });
+        controls.start({ x: 0, transition: { duration: 0.3 } });
+      });
+    } else if (info.offset.x < -threshold) {
+      // Swiped left -> Next track
+      controls.start({ x: '-100%', transition: { duration: 0.3 } }).then(() => {
+        skipTrack();
+        controls.set({ x: '100%' });
+        controls.start({ x: 0, transition: { duration: 0.3 } });
+      });
+    } else {
+      // Not enough swipe distance -> Snap back
+      controls.start({ x: 0, transition: { type: 'spring', stiffness: 300 } });
+    }
+  };
+  
   
   const handleTouchEnd = () => {
     setIsDragging(false);
@@ -584,22 +609,27 @@ useEffect(() => {
       {/* Mini Player */}
       {!isExpanded && (
         <motion.div
-          ref={miniPlayerRef}
-          className="mx-2 rounded-xl overflow-hidden"
-          style={{
-            background: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-          }}
-          onClick={togglePlayer}
-          onTouchStart={handleMiniPlayerTouchStart}
-          onTouchMove={handleMiniPlayerTouchMove}
-          onTouchEnd={handleMiniPlayerTouchEnd}
-          // onTouchStart={handleTouchStart}
-          // onTouchMove={handleTouchMove}
-          // onTouchEnd={handleTouchEnd}
-          animate={controls}
-        >
+        ref={miniPlayerRef}
+        className="mx-2 rounded-xl overflow-hidden"
+        style={{
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+        drag="x" // Allow horizontal dragging
+        dragConstraints={{ left: 0, right: 0 }} // Limit drag to horizontal axis
+        dragElastic={0.2} // Add a slight bounce for a better UX
+        onDragEnd={(event, info) => handleMiniPlayerDragEnd(info)} // Handle drag end
+        animate={controls} // Animate changes smoothly
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent triggering nested click handlers
+          setIsExpanded(true); // Expand the player
+          setIsPlayerOpen(true); // Ensure the expanded state is synced with parent
+        }}
+        onTouchStart={handleMiniPlayerTouchStart}
+        onTouchMove={handleMiniPlayerTouchMove}
+        onTouchEnd={handleMiniPlayerTouchEnd}
+      >
           <div className="p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -825,22 +855,42 @@ useEffect(() => {
               ) : (
                 <>
                   {/* Album Art with Blur Background */}
-                  <div className="relative w-full flex justify-center items-center mb-8">
-                  <motion.div
-                    drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.2}
-                    onDrag={(event, info) => setDragValue(info.offset.x)}
-                    onDragEnd={(event, info) => {
-                      setDragValue(0); // Reset dragValue on drag end
-                      handleDragEnd(info);
-                    }}
-                  >
-                      <img src={currentTrack.album.cover_medium} alt={currentTrack.title} />
-                  </motion.div>
+                  {/* Album Art with Blur Background */}
+<div className="relative w-full flex justify-center items-center mb-8">
+  {/* Background Blur */}
+  <div
+  className="absolute inset-0"
+  style={{
+    backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${currentTrack.album.cover_medium})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    filter: 'blur(20px)',
+    transform: 'scale(1.2)',
+    zIndex: -1,
+  }}
+></div>
 
 
-                  </div>
+  {/* Foreground Album Art */}
+  <motion.div
+    drag="x"
+    dragConstraints={{ left: 0, right: 0 }}
+    dragElastic={0.2}
+    onDrag={(event, info) => setDragValue(info.offset.x)}
+    onDragEnd={(event, info) => {
+      setDragValue(0); // Reset dragValue on drag end
+      handleDragEnd(info);
+    }}
+    className="relative z-10"
+  >
+    <img
+      src={currentTrack.album.cover_medium}
+      alt={currentTrack.title}
+      className="rounded-lg shadow-xl"
+    />
+  </motion.div>
+</div>
+
 
 
                   {/* Track Info */}
