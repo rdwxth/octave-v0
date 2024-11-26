@@ -32,8 +32,8 @@ interface Track {
     cover_medium: string;
   };
 }
-let backClickTimeout: NodeJS.Timeout | null = null;
-let forwardClickTimeout: NodeJS.Timeout | null = null;
+const backClickTimeout: NodeJS.Timeout | null = null;
+const forwardClickTimeout: NodeJS.Timeout | null = null;
 
 
 interface Lyric {
@@ -410,37 +410,71 @@ useEffect(() => {
   // Motion controls
   const controls = useAnimation();
 
-  const handleBackClick = () => {
-    if (backClickTimeout) {
-      clearTimeout(backClickTimeout);
-      backClickTimeout = null;
-      previousTrack();
-    } else {
-      backClickTimeout = setTimeout(() => {
-        handleSeek(0);
-        backClickTimeout = null;
-      }, 300);
-    }
-  };
+  let backClickCount = 0;
 
-  const handleForwardClick = () => {
-    if (forwardClickTimeout) {
-      clearTimeout(forwardClickTimeout);
-      forwardClickTimeout = null;
-      // Double click: Skip to the next track
-      skipTrack();
-    } else {
-      forwardClickTimeout = setTimeout(() => {
-        // Single click: Restart current track if near the end, or go to the next track
-        if (seekPosition > duration - 5) {
+const handleBackClick = () => {
+  backClickCount++;
+
+  if (backClickCount === 1) {
+    // First click: decide whether to seek or skip
+    setTimeout(() => {
+      if (backClickCount === 1) {
+        // If the seek position is greater than 5 seconds, seek to the beginning
+        if (seekPosition > 5) {
+          handleSeek(0); // Seek to the start of the current track
+        } else {
+          // If within the first 5 seconds, skip to the previous track
+          previousTrack();
+        }
+      }
+
+      // Reset the click count after handling single-click
+      backClickCount = 0;
+    }, 300); // Allow 300ms for a possible second click
+  } else if (backClickCount === 2) {
+    // On double-click, skip to the previous track
+    previousTrack();
+
+    // Reset click count immediately
+    backClickCount = 0;
+  }
+};
+
+
+  let forwardClickCount = 0;
+
+const handleForwardClick = () => {
+  forwardClickCount++;
+
+  if (forwardClickCount === 1) {
+    // First click: decide whether to seek or skip
+    setTimeout(() => {
+      if (forwardClickCount === 1) {
+        const timeRemaining = duration - seekPosition;
+
+        if (timeRemaining <= 5) {
+          // Skip to the next track if near the end
           skipTrack();
         } else {
-          handleSeek(duration); // Jump to the end of the current track
+          // Seek to the end of the current track
+          handleSeek(duration);
         }
-        forwardClickTimeout = null;
-      }, 300);
-    }
-  };
+      }
+
+      // Reset the click count after handling single-click
+      forwardClickCount = 0;
+    }, 300); // Allow 300ms for a possible second click
+  } else if (forwardClickCount === 2) {
+    // On double-click, skip to the next track
+    skipTrack();
+
+    // Reset click count immediately
+    forwardClickCount = 0;
+  }
+};
+
+  
+  
 
   // Effect for viewport size detection
   useEffect(() => {
@@ -657,7 +691,10 @@ useEffect(() => {
               <div className="flex items-center space-x-2">
               <button
                 className="p-3 hover:bg-white/10 rounded-full transition-colors"
-                onClick={handleBackClick}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevents triggering the parent click handler
+                  handleBackClick(); // Perform back skip logic
+                }}
               >
                 <SkipBack className="w-5 h-5 text-white" />
               </button>
@@ -678,7 +715,10 @@ useEffect(() => {
 
                 <button
                   className="p-3 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={handleForwardClick}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents triggering the parent click handler
+                    handleForwardClick(); // Perform forward skip logic
+                  }}
                 >
                     <SkipForward className="w-5 h-5 text-white" />
                   </button>
