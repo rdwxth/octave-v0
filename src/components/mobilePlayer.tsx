@@ -47,6 +47,7 @@ type RepeatMode = 'off' | 'all' | 'one';
 interface MobilePlayerProps {
   currentTrack: Track;
   isPlaying: boolean;
+  previousTracks: Track[]; // Add this
   togglePlay: () => void;
   skipTrack: () => void | Promise<void>;
   previousTrack: () => void;
@@ -310,6 +311,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   currentTrack,
   isPlaying,
   togglePlay,
+  previousTracks,
   skipTrack,
   previousTrack,
   seekPosition,
@@ -720,16 +722,42 @@ useEffect(() => {
                     <h2 className="text-lg font-semibold text-white ml-4">Up Next</h2>
                   </div>
                   <div className="space-y-4">
-                    {queue.map((track, index) => (
+                    {/* Previous tracks - greyed out */}
+                    {previousTracks.map((track, index) => (
                       <motion.div
-                      key={index}
-                      className={`flex items-center space-x-4 p-2 rounded-lg ${
-                        track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
-                      } ${index < currentTrackIndex ? 'opacity-50' : ''}`}
+                      key={`prev-${index}`}
+                      className="flex items-center space-x-4 p-2 rounded-lg hover:bg-white/10 opacity-50"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => onQueueItemClick(track, index)}
+                      onClick={() => onQueueItemClick(track, -1 * (index + 1))}
                     >
+                        <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+                          <img
+                            src={track.album.cover_medium}
+                            alt={track.title}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{track.title}</p>
+                          <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
+                        </div>
+                        <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                          <MoreHorizontal className="w-5 h-5 text-white/60" />
+                        </button>
+                      </motion.div>
+                    ))}
+
+                    {/* Current and upcoming tracks */}
+                    {queue.map((track, index) => (
+                      <motion.div
+                        key={`queue-${track.id}`}
+                        className={`flex items-center space-x-4 p-2 rounded-lg ${
+                          track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => onQueueItemClick(track, index)}
+                      >
                         <div className="w-12 h-12 relative rounded-lg overflow-hidden">
                           <img
                             src={track.album.cover_medium}

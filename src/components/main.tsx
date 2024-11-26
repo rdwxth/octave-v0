@@ -140,9 +140,19 @@ export function SpotifyClone() {
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   const onQueueItemClick = (track: Track, index: number) => {
-    setCurrentTrack(track);
-    setQueue(queue.slice(index));
-    setPreviousTracks([...previousTracks, ...queue.slice(0, index)]);
+    if (index < 0) {
+      // Clicked a previous track
+      const actualIndex = Math.abs(index + 1);
+      setCurrentTrack(track);
+      // Move appropriate tracks to previous tracks
+      setPreviousTracks(previousTracks.slice(0, actualIndex));
+      setQueue([track, ...queue.slice(actualIndex)]);
+    } else {
+      // Clicked a queue track
+      setCurrentTrack(track);
+      setQueue(queue.slice(index));
+      setPreviousTracks([...previousTracks, ...queue.slice(0, index)]);
+    }
   };
   
 
@@ -159,15 +169,24 @@ export function SpotifyClone() {
     if (previousTracks.length > 0) {
       const [prevTrack, ...restPreviousTracks] = previousTracks;
       setCurrentTrack(prevTrack);
-      setQueue([prevTrack, currentTrack!, ...queue.slice(1)]);
+      // Add current track back to the queue front
+      setQueue([currentTrack!, ...queue]);
       setPreviousTracks(restPreviousTracks);
+    } else if (currentTrack) {
+      // If no previous tracks but current track exists, just restart it
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        void audioRef.current.play();
+      }
     }
   }, [currentTrack, previousTracks, queue]);
   
   const skipTrack = useCallback(async () => {
     if (currentTrack) {
-      setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]);
+      // Add current track to previous tracks before moving to next
+      setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]); // Keep last 50 tracks
     }
+    
     if (queue.length > 1) {
       const [, ...newQueue] = queue;
       setCurrentTrack(newQueue[0]);
@@ -434,46 +453,38 @@ export function SpotifyClone() {
   };
 
   const handleTrackEnd = useCallback(() => {
-    console.log("Track ended, current repeat mode:", repeatMode); // Add this
-  // First, let's handle repeat mode 'one' (single track repeat)
-  if (repeatMode === 'one') {
-    console.log("Repeat mode 'one' detected, attempting to restart track"); // Add this
-    if (audioRef.current) {
-      const playPromise = async () => {
-        try {
-          console.log("Resetting currentTime and attempting to play"); // Add this
-          audioRef.current.currentTime = 0;
-          await audioRef.current.play();
-          setIsPlaying(true);
-          console.log("Successfully restarted track"); // Add this
-        } catch (error) {
-          console.error('Error restarting track:', error);
-          setIsPlaying(false);
-        }
-      };
-      playPromise();
+    console.log("Track ended, current repeat mode:", repeatMode);
+    console.log("Current queue length:", queue.length);
+    console.log("Current track:", currentTrack?.title);
+  
+    // First, let's handle repeat mode 'one' (single track repeat)
+    if (repeatMode === 'one') {
+      console.log("Handling repeat mode ONE");
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        void audioRef.current.play();
+      }
+      return;
     }
-    return;
-  }
-  console.log("Not in repeat one mode, continuing with normal flow");
   
     // Handle repeat mode 'all' (repeat entire queue)
     if (repeatMode === 'all') {
+      console.log("Handling repeat mode ALL");
       if (queue.length <= 1) {
-        // If there's only one track in the queue, replay it
+        console.log("Queue length <= 1, restarting current track");
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
           void audioRef.current.play();
         }
       } else {
-        // If we're at the end of the queue, reset to the beginning
         const currentIndex = queue.findIndex(track => track.id === currentTrack?.id);
+        console.log("Current index in queue:", currentIndex);
         if (currentIndex === queue.length - 1) {
-          // We're at the end, start over from the beginning
+          console.log("At end of queue, restarting from beginning");
           setCurrentTrack(queue[0]);
-          setQueue(queue); // This preserves the queue order
+          setQueue(queue);
         } else {
-          // Not at the end, just move to next track
+          console.log("Moving to next track in queue");
           skipTrack();
         }
       }
@@ -481,22 +492,23 @@ export function SpotifyClone() {
     }
   
     // Default behavior (repeatMode === 'off')
+    console.log("Repeat mode OFF, standard behavior");
     if (queue.length > 1) {
       skipTrack();
     } else {
-      // If we're at the end of the queue and not repeating, stop playback
       setIsPlaying(false);
     }
   }, [repeatMode, queue, currentTrack, skipTrack, setIsPlaying]);
 
   // Effect for managing audio loop property
-useEffect(() => {
-  if (audioRef.current) {
-    // Only set loop to true if we're in single track repeat mode
-    console.log("Setting audio loop property, repeatMode:", repeatMode); // Add this
-    audioRef.current.loop = repeatMode === 'one';
-  }
-}, [repeatMode]);
+  useEffect(() => {
+    console.log("Audio loop property updating, repeat mode:", repeatMode);
+    if (audioRef.current) {
+      const shouldLoop = repeatMode === 'one';
+      console.log("Setting audio loop to:", shouldLoop);
+      audioRef.current.loop = shouldLoop;
+    }
+  }, [repeatMode]);
 
 // Effect for setting up the ended event listener
 useEffect(() => {
@@ -1172,6 +1184,7 @@ useEffect(() => {
             lyrics={lyrics}
             currentLyricIndex={currentLyricIndex}
             queue={queue}
+            previousTracks={previousTracks} // Add this
             shuffleOn={shuffleOn}
             shuffleQueue={shuffleQueue}
             showLyrics={showLyrics}
@@ -1179,7 +1192,7 @@ useEffect(() => {
             onQueueItemClick={onQueueItemClick}
             setIsPlayerOpen={setIsPlayerOpen} 
           />
-     )}
+      )}
       </div>
       {/* Desktop View */}
       <div className="hidden md:flex flex-1 gap-2 p-2 overflow-y-auto custom-scrollbar">
