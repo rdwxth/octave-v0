@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef, SVGProps } from 'react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion';
 import {
   Heart, Play, Pause, SkipBack, SkipForward, ChevronDown,
   Music, Download, Share2, Radio, Plus, Library,
@@ -339,6 +339,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showAudioMenu, setShowAudioMenu] = useState(false);
   const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
+  const [dragValue, setDragValue] = useState(0);
   const [showQueue, setShowQueue] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [connectedDevice] = useState<string | null>(null);
@@ -472,31 +473,34 @@ useEffect(() => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStart) return;
-
+  
     const xDiff = touchStart.x - e.touches[0].clientX;
     const yDiff = touchStart.y - e.touches[0].clientY;
     const isHorizontalSwipe = Math.abs(xDiff) > Math.abs(yDiff) && Math.abs(xDiff) > 50;
-
+  
     if (isHorizontalSwipe && !isDragging) {
+      setIsDragging(true); // Prevent multiple triggers
+  
       if (xDiff > 0) {
-        controls.start({ x: '-100%', opacity: 0, transition: { duration: 0.3 } })
-          .then(() => {
-            skipTrack();
-            controls.set({ x: '100%', opacity: 0 });
-            controls.start({ x: 0, opacity: 1, transition: { duration: 0.3 } });
-          });
+        // Swipe left for next track
+        controls.start({ x: '-100%', transition: { duration: 0.3 } }).then(() => {
+          skipTrack();
+          controls.set({ x: '100%' });
+          controls.start({ x: 0, transition: { duration: 0.3 } });
+        });
       } else {
-        controls.start({ x: '100%', opacity: 0, transition: { duration: 0.3 } })
-          .then(() => {
-            previousTrack();
-            controls.set({ x: '-100%', opacity: 0 });
-            controls.start({ x: 0, opacity: 1, transition: { duration: 0.3 } });
-          });
+        // Swipe right for previous track
+        controls.start({ x: '100%', transition: { duration: 0.3 } }).then(() => {
+          previousTrack();
+          controls.set({ x: '-100%' });
+          controls.start({ x: 0, transition: { duration: 0.3 } });
+        });
       }
+  
       setTouchStart(null);
     }
   };
-
+  
   const handleTouchEnd = () => {
     setIsDragging(false);
     setTouchStart(null);
@@ -547,6 +551,30 @@ useEffect(() => {
   
     return visibleButtons;
   };
+
+  const handleDragEnd = (info: PanInfo) => {
+    const threshold = 100; // Minimum distance to trigger a track change
+  
+    if (info.offset.x > threshold) {
+      // Dragged to the right -> Go to previous track
+      controls.start({ x: '100%', transition: { duration: 0.3 } }).then(() => {
+        previousTrack();
+        controls.set({ x: '-100%' });
+        controls.start({ x: 0, transition: { duration: 0.3 } });
+      });
+    } else if (info.offset.x < -threshold) {
+      // Dragged to the left -> Go to next track
+      controls.start({ x: '-100%', transition: { duration: 0.3 } }).then(() => {
+        skipTrack();
+        controls.set({ x: '100%' });
+        controls.start({ x: 0, transition: { duration: 0.3 } });
+      });
+    } else {
+      // Not far enough -> Snap back to the center
+      controls.start({ x: 0, transition: { type: 'spring', stiffness: 300 } });
+    }
+  };
+  
   
   
 
@@ -798,25 +826,22 @@ useEffect(() => {
                 <>
                   {/* Album Art with Blur Background */}
                   <div className="relative w-full flex justify-center items-center mb-8">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center filter blur-xl opacity-80"
-                      style={{ backgroundImage: `url(${currentTrack.album.cover_medium})` }}
-                    />
-                    <motion.div
-                      className={`relative z-10 ${
-                        isSmallDevice ? 'w-48 h-48' : 'w-64 h-64'
-                      } rounded-2xl overflow-hidden shadow-2xl`}
-                      layoutId="album-art"
-                      onTouchStart={handleTouchStart}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                    >
-                      <img
-                        src={currentTrack.album.cover_medium}
-                        alt={currentTrack.title}
-                      />
-                    </motion.div>
+                  <motion.div
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.2}
+                    onDrag={(event, info) => setDragValue(info.offset.x)}
+                    onDragEnd={(event, info) => {
+                      setDragValue(0); // Reset dragValue on drag end
+                      handleDragEnd(info);
+                    }}
+                  >
+                      <img src={currentTrack.album.cover_medium} alt={currentTrack.title} />
+                  </motion.div>
+
+
                   </div>
+
 
                   {/* Track Info */}
                   <div className="w-full text-center mb-8">
