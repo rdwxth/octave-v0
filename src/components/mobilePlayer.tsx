@@ -342,6 +342,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [showQueue, setShowQueue] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [connectedDevice] = useState<string | null>(null);
+  const lyricsRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [miniPlayerTouchStartY, setMiniPlayerTouchStartY] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -352,6 +353,24 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
     setIsExpanded(!isExpanded);
     setIsPlayerOpen(!isExpanded);
   };
+
+  useEffect(() => {
+    const lyricsContainer = lyricsRef.current;
+    if (lyricsContainer && currentLyricIndex !== -1) {
+      const currentLyricElement = lyricsContainer.children[currentLyricIndex] as HTMLElement;
+      if (currentLyricElement) {
+        const containerHeight = lyricsContainer.clientHeight;
+        const lyricPosition = currentLyricElement.offsetTop;
+        const lyricHeight = currentLyricElement.clientHeight;
+        const scrollPosition = lyricPosition - containerHeight / 2 + lyricHeight / 2;
+  
+        lyricsContainer.scrollTo({
+          top: scrollPosition,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [currentLyricIndex]);
 
   // Add this somewhere near the top of the component body
 useEffect(() => {
@@ -491,26 +510,26 @@ useEffect(() => {
   };
 
   // Action items
-  const moreOptionsItems = [
-    { icon: Ban, label: "Don't play", action: () => console.log('Blocked') },
-    { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
-    { icon: Library, label: 'Add to Playlist', action: () => console.log('Added to playlist') },
-    { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
-    { icon: Share, label: 'Share', action: () => console.log('Shared') },
-    { icon: Flag, label: 'Report', action: () => console.log('Reported') },
-    { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
-    { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
-  ];
+    const actionButtons = [
+      { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
+      { icon: Plus, label: 'Add to', onClick: () => setShowAddToPlaylistModal(true) },
+      { icon: Download, label: 'Download', onClick: () => console.log('Download') },
+    ];
 
-  const actionButtons = [
-    { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
-    { icon: Plus, label: 'Add to', onClick: () => setShowAddToPlaylistModal(true) },
-    { icon: Download, label: 'Download', onClick: () => console.log('Download') },
-    { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
-    { icon: Radio, label: 'Radio', onClick: () => console.log('Start radio') },
-    { icon: Mic2, label: 'Sing', onClick: () => console.log('Start karaoke') },
-    { icon: ListMusic, label: 'Queue', onClick: () => setShowQueue(true) },
-  ];
+    // Update the moreOptionsItems array
+    const moreOptionsItems = [
+      { icon: Ban, label: "Dislike", action: () => console.log('Blocked') },
+      { icon: Share2, label: 'Karoke', action: () => console.log('Karoke Time to Sing!!') },
+      { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
+      { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
+      { icon: Share, label: 'Share', action: () => console.log('Shared') },
+      { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
+      { icon: Flag, label: 'Report', action: () => console.log('Reported') },
+      { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
+      { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
+      { icon: Mic2, label: 'Karoke', action: () => console.log('Karoke Time to Sing!!') },
+      { icon: Library, label: 'N/A for Now', action: () => console.log('Karoke Time to Sing!!') },
+    ];
 
   // Get visible action buttons based on screen size
   const getVisibleActionButtons = () => {
@@ -518,7 +537,7 @@ useEffect(() => {
     const visibleButtons = actionButtons.slice(0, 4);
   
     // Add the 'More' button if there are additional action buttons
-    if (actionButtons.length > 4) {
+    if (actionButtons.length > 1) {
       visibleButtons.push({
         icon: MoreHorizontal,
         label: 'More',
@@ -696,7 +715,7 @@ useEffect(() => {
                     </button>
                     <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
                   </div>
-                  <div className="space-y-6">
+                  <div className="space-y-6" ref={lyricsRef}>
                   {lyrics.map((lyric, index) => (
                     <motion.p
                       key={index}
@@ -711,7 +730,7 @@ useEffect(() => {
                   </div>
                 </div>
               ) : showQueue ? (
-                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto overflow-hidden">
+                <div className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden">
                   <div className="flex items-center mb-6">
                     <button
                       onClick={() => setShowQueue(false)}
@@ -725,12 +744,12 @@ useEffect(() => {
                     {/* Previous tracks - greyed out */}
                     {previousTracks.map((track, index) => (
                       <motion.div
-                      key={`prev-${index}`}
-                      className="flex items-center space-x-4 p-2 rounded-lg hover:bg-white/10 opacity-50"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => onQueueItemClick(track, -1 * (index + 1))}
-                    >
+                        key={`prev-${track.id}-${index}`}
+                        className="flex items-center space-x-4 p-2 rounded-lg hover:bg-white/10 opacity-50"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => onQueueItemClick(track, -1 * (index + 1))}
+                      >
                         <div className="w-12 h-12 relative rounded-lg overflow-hidden">
                           <img
                             src={track.album.cover_medium}
@@ -750,7 +769,7 @@ useEffect(() => {
                     {/* Current and upcoming tracks */}
                     {queue.map((track, index) => (
                       <motion.div
-                        key={`queue-${track.id}`}
+                        key={`queue-${track.id}-${index}`}
                         className={`flex items-center space-x-4 p-2 rounded-lg ${
                           track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
                         }`}
@@ -989,7 +1008,6 @@ useEffect(() => {
                             icon={item.icon}
                             label={item.label}
                             onClick={() => {
-                              item.action();
                               setShowMoreOptions(false);
                             }}
                           />

@@ -141,20 +141,21 @@ export function SpotifyClone() {
 
   const onQueueItemClick = (track: Track, index: number) => {
     if (index < 0) {
-      // Clicked a previous track
+      // Handle previous track logic
       const actualIndex = Math.abs(index + 1);
-      setCurrentTrack(track);
-      // Move appropriate tracks to previous tracks
-      setPreviousTracks(previousTracks.slice(0, actualIndex));
-      setQueue([track, ...queue.slice(actualIndex)]);
-    } else {
-      // Clicked a queue track
-      setCurrentTrack(track);
-      setQueue(queue.slice(index));
-      setPreviousTracks([...previousTracks, ...queue.slice(0, index)]);
+      setPreviousTracks((prev) => prev.slice(0, actualIndex));
     }
+    updateQueue(track);
+    setCurrentTrack(track);
   };
   
+  const updateQueue = (track: Track) => {
+    setQueue((prevQueue) => {
+      const updatedQueue = prevQueue.filter((t) => t.id !== track.id);
+      return [track, ...updatedQueue];
+    });
+  };
+
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -167,19 +168,13 @@ export function SpotifyClone() {
   
   const previousTrack = useCallback(() => {
     if (previousTracks.length > 0) {
-      const [prevTrack, ...restPreviousTracks] = previousTracks;
-      setCurrentTrack(prevTrack);
-      // Add current track back to the queue front
-      setQueue([currentTrack!, ...queue]);
-      setPreviousTracks(restPreviousTracks);
-    } else if (currentTrack) {
-      // If no previous tracks but current track exists, just restart it
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        void audioRef.current.play();
-      }
+        const [prevTrack, ...restPreviousTracks] = previousTracks;
+        setCurrentTrack(prevTrack);
+        updateQueue(currentTrack!); // Ensure queue stays consistent
+        setPreviousTracks(restPreviousTracks);
     }
-  }, [currentTrack, previousTracks, queue]);
+}, [currentTrack, previousTracks]);
+
   
   const skipTrack = useCallback(async () => {
     if (currentTrack) {
@@ -381,16 +376,20 @@ export function SpotifyClone() {
 
   const playTrack = (track: Track) => {
     if (currentTrack) {
-      setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]);
+        setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]);
     }
+    updateQueue(track);
     setCurrentTrack(track);
-    setQueue([track, ...queue]);
-  };
+};
 
 
-  const addToQueue = (track: Track) => {
-    setQueue([...queue, track]);
-  };
+
+
+
+const addToQueue = (track: Track) => {
+  updateQueue(track); // Ensures no duplicates in the queue
+};
+
 
 
 
@@ -469,22 +468,17 @@ export function SpotifyClone() {
   
     // Handle repeat mode 'all' (repeat entire queue)
     if (repeatMode === 'all') {
-      console.log("Handling repeat mode ALL");
-      if (queue.length <= 1) {
-        console.log("Queue length <= 1, restarting current track");
+      if (queue.length === 1) {
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
           void audioRef.current.play();
         }
       } else {
         const currentIndex = queue.findIndex(track => track.id === currentTrack?.id);
-        console.log("Current index in queue:", currentIndex);
         if (currentIndex === queue.length - 1) {
-          console.log("At end of queue, restarting from beginning");
           setCurrentTrack(queue[0]);
           setQueue(queue);
         } else {
-          console.log("Moving to next track in queue");
           skipTrack();
         }
       }
