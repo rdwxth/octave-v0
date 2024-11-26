@@ -11,6 +11,8 @@ import {
   Share, Star, RefreshCw, Flag, AlertCircle, Lock, UserPlus
 } from 'lucide-react';
 
+import Vibrant from 'node-vibrant'; // Import library
+
 // Original interfaces
 interface Artist {
   name: string;
@@ -349,11 +351,28 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [textOverflow, setTextOverflow] = useState(false);
   const [isSmallDevice, setIsSmallDevice] = useState(false);
+  const [dominantColor, setDominantColor] = useState<string | null>(null);
 
   const togglePlayer = () => {
     setIsExpanded(!isExpanded);
     setIsPlayerOpen(!isExpanded);
   };
+
+  useEffect(() => {
+    const extractColor = async () => {
+      try {
+        const palette = await Vibrant.from(currentTrack.album.cover_medium).getPalette();
+        setDominantColor(palette.Vibrant?.getHex() || '#000000'); // Fallback to black
+      } catch (error) {
+        console.error('Error extracting color:', error);
+        setDominantColor('#000000'); // Fallback to black on error
+      }
+    };
+  
+    if (currentTrack.album.cover_medium) {
+      extractColor();
+    }
+  }, [currentTrack.album.cover_medium]);
 
   useEffect(() => {
     const lyricsContainer = lyricsRef.current;
@@ -646,9 +665,11 @@ const handleForwardClick = () => {
         ref={miniPlayerRef}
         className="mx-2 rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(0, 0, 0, 0.85)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          background: dominantColor
+            ? `linear-gradient(to bottom, ${dominantColor}AA, #000000EE)`
+            : 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(12px)', // Add blur effect
+          WebkitBackdropFilter: 'blur(12px)', // For Safari support
         }}
         drag="x" // Allow horizontal dragging
         dragConstraints={{ left: 0, right: 0 }} // Limit drag to horizontal axis
@@ -1168,6 +1189,14 @@ const handleForwardClick = () => {
           display: inline-block;
           padding-right: 2rem;
         }
+
+        .mini-player {
+  background: rgba(0, 0, 0, 0.85); /* Fallback background */
+  backdrop-filter: blur(12px); /* Blur effect */
+  -webkit-backdrop-filter: blur(12px); /* For Safari */
+  border-radius: 16px; /* Rounded edges for better UX */
+}
+
 
         /* Enhanced seekbar thumb styling */
         input[type="range"] {
