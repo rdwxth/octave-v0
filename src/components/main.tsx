@@ -555,13 +555,25 @@ const addToQueue = (track: Track) => {
     return randomSongs;
   };
 
-  const preloadQueueTracks = (queueTracks: Track[]) => {
-    queueTracks.slice(0, 3).forEach((track, index) => {
+  const preloadQueueTracks = async (queueTracks: Track[]) => {
+    for (let i = 0; i < 3; i++) {
+      const track = queueTracks[i];
       if (track) {
-        preloadedAudios.current[index].src = `${API_BASE_URL}/api/track/${track.id}.mp3`;
-        preloadedAudios.current[index].load();
+        const offlineTrack = await getOfflineTrack(track.id);
+        if (offlineTrack) {
+          preloadedAudios.current[i].src = offlineTrack;
+        } else {
+          fetch(`${API_BASE_URL}/api/track/${track.id}.mp3`)
+            .then(response => response.blob())
+            .then(blob => {
+              const objectURL = URL.createObjectURL(blob);
+              preloadedAudios.current[i].src = objectURL;
+            })
+            .catch(error => console.error('Error preloading track:', error));
+        }
+        preloadedAudios.current[i].load();
       }
-    });
+    }
   };
 
   const updateRecentlyPlayed = (track: Track) => {
@@ -796,6 +808,16 @@ useEffect(() => {
   };
   const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false }: TrackItemProps) => {
     const [isHovered, setIsHovered] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [isOfflineAvailable, setIsOfflineAvailable] = useState(false);
+  
+  useEffect(() => {
+    const checkOfflineAvailability = async () => {
+      const offlineTrack = await getOfflineTrack(track.id);
+      setIsOfflineAvailable(!!offlineTrack);
+    };
+    checkOfflineAvailability();
+  }, [track.id]);
 
     return (
       <div
@@ -1165,25 +1187,16 @@ useEffect(() => {
                       Smart Shuffle
                     </button>
                     <button
-                      className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                      isDownloading ? 'bg-gray-800 text-white' : 'bg-gray-800 text-white'
-                      }`}
+                      className="bg-gray-800 text-white rounded-full px-4 py-2 text-sm font-semibold"
                       onClick={() => downloadPlaylist(currentPlaylist)}
-                      disabled={isDownloading}
                     >
                       {isDownloading ? (
-                      <div className="relative flex items-center">
-                        <Download className="w-4 h-4 mr-2" />
-                        <span>{Math.round(downloadProgress)}%</span>
-                        <div
-                        className="absolute inset-0 rounded-full border-2 border-green-500"
-                        style={{
-                          clipPath: `circle(${downloadProgress}% at 50% 50%)`,
-                        }}
-                        ></div>
-                      </div>
+                        <div className="relative flex items-center">
+                          <Download className={`w-4 h-4 mr-2 ${downloadProgress === 100 ? 'text-blue-500' : ''}`} />
+                          <span>{Math.round(downloadProgress)}%</span>
+                        </div>
                       ) : (
-                      <Download className="w-4 h-4" />
+                        <Download className="w-4 h-4" />
                       )}
                     </button>
                   </div>

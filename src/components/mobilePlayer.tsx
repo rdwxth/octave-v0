@@ -1051,7 +1051,107 @@ const handleForwardClick = () => {
                       </motion.div>
                     ))}
                   </div>
+                  {/* Mini Player */}
+<div className="fixed bottom-0 left-0 right-0 z-50 bg-black py-4">
+  <div 
+    className="mx-2 rounded-xl overflow-hidden"
+    style={{
+      background: dominantColor
+        ? `linear-gradient(to bottom, ${dominantColor}CC, rgba(0, 0, 0, 0.95))`
+        : 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+    }}
+  >
+    <div className="p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <motion.div
+            className="relative w-12 h-12 rounded-lg overflow-hidden"
+            whileHover={{ scale: 1.05 }}
+          >
+            <img
+              src={currentTrack.album.cover_medium}
+              alt={currentTrack.title}
+            />
+          </motion.div>
+
+          <div className="flex-1 min-w-0">
+            <div
+              ref={titleRef}
+              className="text-white font-medium truncate"
+            >
+              {currentTrack.title}
+            </div>
+            <p className="text-white/60 text-sm truncate">{currentTrack.artist.name}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevents triggering the parent click handler
+              handleBackClick(); // Perform back skip logic
+            }}
+          >
+            <SkipBack className="w-5 h-5 text-white" />
+          </button>
+
+          <button
+            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlay();
+            }}
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5 text-white" />
+            ) : (
+              <Play className="w-5 h-5 text-white" />
+            )}
+          </button>
+
+          <button
+            className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevents triggering the parent click handler
+              handleForwardClick(); // Perform forward skip logic
+            }}
+          >
+            <SkipForward className="w-5 h-5 text-white" />
+          </button>
+
+          <button
+            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLike();
+            }}
+          >
+            <Heart
+              className={`w-5 h-5 ${isLiked ? 'fill-green-500 text-green-500' : 'text-white/60'}`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Mini Progress Bar */}
+      <div className="mt-2">
+        <Seekbar
+          progress={seekPosition / duration}
+          handleSeek={handleSeek}
+          duration={duration}
+          isMiniplayer
+        />
+      </div>
+    </div>
+  </div>
+</div>
                 </div>
+
+                
+                
               ) : (
                 <>
                   {/* Album Art with Blur Background */}
