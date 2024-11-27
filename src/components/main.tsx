@@ -270,6 +270,7 @@ export function SpotifyClone() {
       if (savedQueue.length > 1) {
         const [, ...newQueue] = savedQueue;
         setCurrentTrack(newQueue[0]);
+        console.log('Setting new queue:', newQueue);
         setQueue(newQueue);
         localStorage.setItem('queue', JSON.stringify(newQueue));
       } else {
@@ -309,21 +310,21 @@ export function SpotifyClone() {
 
 
      // Add these lines
-  const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
-  const savedPosition = parseFloat(localStorage.getItem('savedPosition') || '0');
-  const wasPlaying = localStorage.getItem('wasPlaying') === 'true';
-  
-  setQueue(savedQueue);
-  setSavedPosition(savedPosition);
-  
-  if (savedQueue.length > 0) {
-    const savedTrack = JSON.parse(localStorage.getItem('currentTrack') || 'null') as Track;
-    if (savedTrack) {
-      setCurrentTrack(savedTrack);
-      setSeekPosition(savedPosition);
-      setIsPlaying(wasPlaying);
+    const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
+    const savedPosition = parseFloat(localStorage.getItem('savedPosition') || '0');
+    const wasPlaying = localStorage.getItem('wasPlaying') === 'true';
+    console.log('Saved queue:', savedQueue);
+    setQueue(savedQueue);
+    setSavedPosition(savedPosition);
+    
+    if (savedQueue.length > 0) {
+      const savedTrack = JSON.parse(localStorage.getItem('currentTrack') || 'null') as Track;
+      if (savedTrack) {
+        setCurrentTrack(savedTrack);
+        setSeekPosition(savedPosition);
+        setIsPlaying(wasPlaying);
+      }
     }
-  }
     setQueue(savedQueue);
     const savedCurrentTrack = JSON.parse(localStorage.getItem('currentTrack') || 'null') as Track | null;
     if (savedCurrentTrack) {
@@ -651,24 +652,15 @@ const addToQueue = (track: Track) => {
     }
     return randomSongs;
   };
-
+  
   const preloadQueueTracks = async (queueTracks: Track[]) => {
-    for (let i = 0; i < 3; i++) {
-      const track = queueTracks[i];
+    const nextTracks = queueTracks.slice(1, 4);
+    for (const [index, track] of nextTracks.entries()) {
       if (track) {
         const offlineTrack = await getOfflineTrack(track.id);
-        if (offlineTrack) {
-          preloadedAudios.current[i].src = offlineTrack;
-        } else {
-          fetch(`${API_BASE_URL}/api/track/${track.id}.mp3`)
-            .then(response => response.blob())
-            .then(blob => {
-              const objectURL = URL.createObjectURL(blob);
-              preloadedAudios.current[i].src = objectURL;
-            })
-            .catch(error => console.error('Error preloading track:', error));
-        }
-        preloadedAudios.current[i].load();
+        const audio = new Audio(offlineTrack || `${API_BASE_URL}/api/track/${track.id}.mp3`);
+        audio.preload = 'auto';
+        preloadedAudios.current[index] = audio;
       }
     }
   };
@@ -737,7 +729,7 @@ const addToQueue = (track: Track) => {
     if (queue.length > 1) {
       skipTrack();
     } else {
-      setIsPlaying(false);
+      setIsPlaying(true);
     }
   }, [repeatMode, queue, currentTrack, skipTrack, setIsPlaying]);
 
@@ -1575,11 +1567,10 @@ useEffect(() => {
               </section>
               {/* Jump Back In */}
               <section className="mb-6">
+                {jumpBackIn.length > 0 && <h2 className="text-2xl font-bold mb-4">Jump Back In</h2>}
 
                 {jumpBackIn.length > 0 ? (
-                  
                   <div className="flex space-x-4 overflow-x-auto custom-scrollbar">
-                                  <h2 className="text-2xl font-bold mb-4">Jump Back In</h2>
 
                     {jumpBackIn.map((track, index) => (
                       <div key={index} className="flex-shrink-0 w-40">
@@ -1598,11 +1589,13 @@ useEffect(() => {
                         </div>
                         <p className="font-medium text-sm">{track.title}</p>
                       </div>
+                      
                     ))}
+
                   </div>
                 ) : (
                   <div>
-                <h2 className="text-2xl font-bold mb-4">Suggested</h2>
+                <h2 className="text-2xl font-bold mb-4">Suggested for you</h2>
                 <div className="flex space-x-4 overflow-x-auto custom-scrollbar">
                       {searchResults.slice(0, 5).map((track, index) => (
                         <div key={index} className="flex-shrink-0 w-40">
