@@ -764,9 +764,9 @@ const handleForwardClick = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 justify-center">
               <button
-                className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
                 onClick={(e) => {
                   e.stopPropagation(); // Prevents triggering the parent click handler
                   handleBackClick(); // Perform back skip logic
@@ -776,7 +776,7 @@ const handleForwardClick = () => {
               </button>
 
                 <button
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     togglePlay();
@@ -790,7 +790,7 @@ const handleForwardClick = () => {
                 </button>
 
                 <button
-                  className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation(); // Prevents triggering the parent click handler
                     handleForwardClick(); // Perform forward skip logic
@@ -1041,7 +1041,7 @@ const handleForwardClick = () => {
 
         <div className="flex items-center space-x-2">
           <button
-            className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
             onClick={(e) => {
               e.stopPropagation(); // Prevents triggering the parent click handler
               handleBackClick(); // Perform back skip logic
@@ -1065,7 +1065,7 @@ const handleForwardClick = () => {
           </button>
 
           <button
-            className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
             onClick={(e) => {
               e.stopPropagation(); // Prevents triggering the parent click handler
               handleForwardClick(); // Perform forward skip logic
@@ -1183,7 +1183,7 @@ const handleForwardClick = () => {
 
                     <div className="flex items-center space-x-8">
                     <button
-                      className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                      className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
                       onClick={handleBackClick}
                     >
                       <SkipBack className="w-6 h-6 text-white" />
@@ -1203,7 +1203,7 @@ const handleForwardClick = () => {
                       </motion.button>
 
                       <button
-                        className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                        className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
                         onClick={handleForwardClick}
                       >
                         <SkipForward className="w-6 h-6 text-white" />
