@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
-import React, { useState, useEffect, useRef, SVGProps } from 'react';
+import React, { useState, useEffect, useRef, SVGProps, useCallback } from 'react';
 import { motion, AnimatePresence, useAnimation, PanInfo } from 'framer-motion';
 import {
   Heart, Play, Pause, SkipBack, SkipForward, ChevronDown,
@@ -95,24 +95,15 @@ const formatTime = (seconds: number): string => {
 };
 
 
-
-
 const Seekbar: React.FC<SeekbarProps> = ({
   progress,
   handleSeek,
   isMiniplayer = false,
   duration,
 }) => {
-  // State to track if the user is dragging the thumb
   const [isDragging, setIsDragging] = useState(false);
-  
-  // State to manage local progress value
   const [localProgress, setLocalProgress] = useState(progress);
-  
-  // State to manage thumb visibility
-  const [isThumbVisible, setIsThumbVisible] = useState(false);
-  
-  // Ref to the slider track for calculating positions
+  const [isHovering, setIsHovering] = useState(false);
   const progressRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -121,143 +112,82 @@ const Seekbar: React.FC<SeekbarProps> = ({
     }
   }, [progress, isDragging]);
 
-  // Function to calculate progress based on clientX
-  const calculateProgress = (clientX: number): number | null => {
+  const calculateProgress = useCallback((clientX: number): number | null => {
     if (!progressRef.current) return null;
     const rect = progressRef.current.getBoundingClientRect();
     const newProgress = (clientX - rect.left) / rect.width;
     return Math.min(1, Math.max(0, newProgress));
-  };
+  }, []);
 
-  // Handle mouse move event during dragging
-  const handleMouseMove = (e: MouseEvent) => {
-    // e.preventDefault();
-    if (isDragging) {
-      const newProgress = calculateProgress(e.clientX);
-      if (newProgress !== null) {
-        setLocalProgress(newProgress);
-      }
-    }
-  };
-
-  // Handle mouse up event to end dragging
-  const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      handleSeek(localProgress * duration);
-      setIsThumbVisible(false); // Hide the thumb after seeking
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    }
-  };
-
-  // Handle touch move event during dragging
-  const handleTouchMove = (e: TouchEvent) => {
-    // e.preventDefault();
-    if (isDragging) {
-      const touch = e.touches[0];
-      const newProgress = calculateProgress(touch.clientX);
-      if (newProgress !== null) {
-        setLocalProgress(newProgress);
-      }
-    }
-  };
-
-  // Handle touch end event to end dragging
-  const handleTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      handleSeek(localProgress * duration);
-      setIsThumbVisible(false); // Hide the thumb after seeking
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    }
-  };
-
-  // Handle interaction start (mouse down or touch start)
-  const handleInteractionStart = (
-    e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
-  ) => {
+  const handleInteractionStart = useCallback((clientX: number) => {
     setIsDragging(true);
-    setIsThumbVisible(true); // Show the thumb when interaction starts
-    let clientX: number;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      document.addEventListener('touchmove', handleTouchMove);
-      document.addEventListener('touchend', handleTouchEnd);
-    } else {
-      clientX = e.clientX;
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
     const newProgress = calculateProgress(clientX);
     if (newProgress !== null) {
       setLocalProgress(newProgress);
     }
-  };
+  }, [calculateProgress]);
 
-  // Handle clicks outside the slider to hide the thumb
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        progressRef.current &&
-        !progressRef.current.contains(e.target as Node)
-      ) {
-        setIsThumbVisible(false);
+    const handleInteractionMove = (clientX: number) => {
+      if (isDragging) {
+        const newProgress = calculateProgress(clientX);
+        if (newProgress !== null) {
+          setLocalProgress(newProgress);
+        }
       }
     };
 
-    // Add event listener when thumb is visible
-    if (isThumbVisible) {
-      document.addEventListener('mousedown', handleClickOutside);
+    const handleInteractionEnd = () => {
+      if (isDragging) {
+        handleSeek(localProgress * duration);
+        setIsDragging(false);
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => handleInteractionMove(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => handleInteractionMove(e.touches[0].clientX);
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('mouseup', handleInteractionEnd);
+      document.addEventListener('touchend', handleInteractionEnd);
     }
 
-    // Cleanup event listener
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleInteractionEnd);
+      document.removeEventListener('touchend', handleInteractionEnd);
     };
-  }, [isThumbVisible]);
+  }, [isDragging, calculateProgress, handleSeek, duration, localProgress]);
 
   return (
-    <div className="flex flex-col items-center">
-      {/* Seekbar Container */}
+    <div 
+      className="mx-4 relative"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       <div
         ref={progressRef}
-        className={`relative w-full ${isMiniplayer ? 'h-1' : 'h-2'} cursor-pointer`}
-        onMouseDown={handleInteractionStart}
-        onTouchStart={handleInteractionStart}
+        className={`relative w-full ${isMiniplayer ? 'h-0.5' : 'h-1'} cursor-pointer rounded-full bg-white/20`}
+        onMouseDown={(e) => handleInteractionStart(e.clientX)}
+        onTouchStart={(e) => handleInteractionStart(e.touches[0].clientX)}
       >
-        {/* Background Bar */}
-        <div className="absolute inset-0 bg-gray-700 rounded-full">
-          {/* Progress Indicator */}
-          <motion.div
-            className="h-full bg-green-500 rounded-full"
-            style={{ width: `${localProgress * 100}%` }}
-          />
-        </div>
-
-        {/* Thumb - Visible Only When isThumbVisible is True */}
-        {isThumbVisible && (
-          <motion.div
-            className="absolute top-1/2 transform -translate-y-1/2 w-2 h-5 bg-blue-500 rounded-sm border border-gray-300 cursor-pointer shadow-lg"
-            style={{ left: `${localProgress * 100}%` }}
-            whileHover={{ scale: 1.2, boxShadow: "0px 0px 12px rgba(0, 0, 0, 0.2)" }}
-            transition={{ type: "spring", stiffness: 300 }}
-            onMouseDown={(e) => {
-              // Prevent slider from losing focus when clicking the thumb
-              e.stopPropagation();
-            }}
-            onTouchStart={(e) => {
-              // Prevent slider from losing focus when touching the thumb
-              e.stopPropagation();
-            }}
-          />
-        )}
+        <motion.div
+          className="absolute left-0 top-0 h-full bg-white rounded-full"
+          style={{ width: `${localProgress * 100}%` }}
+          animate={{ width: `${localProgress * 100}%` }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+        <div
+          className={`absolute w-3 h-3 bg-white rounded-full shadow-lg cursor-grab`}
+          style={{ top: '50%', transform: 'translateY(-50%)', left: `${localProgress * 100}%` }}
+        />
       </div>
     </div>
   );
 };
-
 
 
 // Enhanced QualityBadge with perfectly centered icons
