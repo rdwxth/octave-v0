@@ -104,76 +104,69 @@ const Seekbar: React.FC<SeekbarProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [localProgress, setLocalProgress] = useState(progress);
-  const [isHovering, setIsHovering] = useState(false);
   const progressRef = useRef<HTMLDivElement | null>(null);
 
+  // Update local progress when not dragging
   useEffect(() => {
     if (!isDragging) {
       setLocalProgress(progress);
     }
   }, [progress, isDragging]);
 
-  const calculateProgress = useCallback((clientX: number): number | null => {
-    if (!progressRef.current) return null;
+  const calculateProgress = useCallback((clientX: number): number => {
+    if (!progressRef.current) return 0;
     const rect = progressRef.current.getBoundingClientRect();
-    const newProgress = (clientX - rect.left) / rect.width;
-    return Math.min(1, Math.max(0, newProgress));
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   }, []);
 
-  const handleInteractionStart = useCallback((clientX: number) => {
+  const handleDragStart = (clientX: number) => {
     setIsDragging(true);
     const newProgress = calculateProgress(clientX);
-    if (newProgress !== null) {
+    setLocalProgress(newProgress);
+  };
+
+  const handleDragMove = useCallback((clientX: number) => {
+    if (isDragging) {
+      const newProgress = calculateProgress(clientX);
       setLocalProgress(newProgress);
     }
-  }, [calculateProgress]);
+  }, [isDragging, calculateProgress]);
+  
+  const handleDragEnd = useCallback(() => {
+    if (isDragging) {
+      handleSeek(localProgress * duration);
+      setIsDragging(false);
+    }
+  }, [isDragging, handleSeek, localProgress, duration]);
+  
 
   useEffect(() => {
-    const handleInteractionMove = (clientX: number) => {
-      if (isDragging) {
-        const newProgress = calculateProgress(clientX);
-        if (newProgress !== null) {
-          setLocalProgress(newProgress);
-        }
-      }
-    };
-
-    const handleInteractionEnd = () => {
-      if (isDragging) {
-        handleSeek(localProgress * duration);
-        setIsDragging(false);
-      }
-    };
-
-    const handleMouseMove = (e: MouseEvent) => handleInteractionMove(e.clientX);
-    const handleTouchMove = (e: TouchEvent) => handleInteractionMove(e.touches[0].clientX);
-
+    const handleMouseMove = (e: MouseEvent) => handleDragMove(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => handleDragMove(e.touches[0].clientX);
+    const handleEnd = () => handleDragEnd();
+  
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('touchmove', handleTouchMove);
-      document.addEventListener('mouseup', handleInteractionEnd);
-      document.addEventListener('touchend', handleInteractionEnd);
+      window.addEventListener('mousemove', handleMouseMove); 
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchend', handleEnd);
     }
-
+  
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('mouseup', handleInteractionEnd);
-      document.removeEventListener('touchend', handleInteractionEnd);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchend', handleEnd); 
     };
-  }, [isDragging, calculateProgress, handleSeek, duration, localProgress]);
+  }, [isDragging, handleDragMove, handleDragEnd]);
 
   return (
-    <div 
-      className="mx-4 relative"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
+    <div className="mx-4 relative">
       <div
         ref={progressRef}
         className={`relative w-full ${isMiniplayer ? 'h-0.5' : 'h-1'} cursor-pointer rounded-full bg-white/20`}
-        onMouseDown={(e) => handleInteractionStart(e.clientX)}
-        onTouchStart={(e) => handleInteractionStart(e.touches[0].clientX)}
+        onMouseDown={(e) => handleDragStart(e.clientX)}
+        onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
       >
         <motion.div
           className="absolute left-0 top-0 h-full bg-white rounded-full"
@@ -181,17 +174,6 @@ const Seekbar: React.FC<SeekbarProps> = ({
           animate={{ width: `${localProgress * 100}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
-        <div
-  className={`absolute w-3 h-3 bg-white rounded-full shadow-lg cursor-grab transition-opacity duration-200 ${
-    isHovering || isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
-  }`}
-  style={{
-    top: '50%',
-    transform: 'translateY(-50%)',
-    left: `${localProgress * 100}%`,
-  }}
-/>
-
       </div>
     </div>
   );
