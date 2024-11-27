@@ -19,6 +19,7 @@ declare global {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     deferredPrompt: any;
   }
+
 }
 
 import {
@@ -91,6 +92,66 @@ interface TrackItemProps {
   track: Track;
   showArtist?: boolean;
   inPlaylistCreation?: boolean;
+}
+
+interface ExtendedTrack extends Track {
+  genre?: string;
+  year?: number;
+  trackNumber?: number;
+  totalTracks?: number;
+  albumArtist?: string;
+  composer?: string;
+  discNumber?: number;
+  totalDiscs?: number;
+  bpm?: number;
+  isrc?: string;
+}
+
+interface BluetoothDevice {
+  gatt?: {
+    connected: boolean;
+    getPrimaryService(name: string): Promise<BluetoothRemoteGATTService>;
+  };
+}
+
+interface BluetoothRemoteGATTService {
+  getCharacteristic(name: string): Promise<BluetoothRemoteGATTCharacteristic>;
+}
+
+interface BluetoothRemoteGATTCharacteristic {
+  writeValue(value: BufferSource): Promise<void>;
+}
+
+declare global {
+  interface Navigator {
+    setAppBadge(n: number): Promise<void>;
+    clearAppBadge(): Promise<void>;
+    bluetooth?: {
+      availableDevices?: BluetoothDevice[];
+    };
+  }
+
+  interface MediaSession {
+    setPositionState(state: MediaPositionState): void;
+  }
+
+
+  interface ExtendedNotificationOptions extends NotificationOptions {
+    body?: string;
+    icon?: string;
+    badge?: string;
+    tag?: string;
+    renotify?: boolean;
+    silent?: boolean | null;
+  }
+
+  interface NotificationOptions {
+    body?: string;
+    icon?: string;
+    badge?: string;
+    tag?: string;
+    renotify?: boolean;
+  }
 }
 
 export function SpotifyClone() {
@@ -324,39 +385,119 @@ export function SpotifyClone() {
     }
   }, [searchQuery, debouncedSearch]);
 
+  const updateBluetoothMetadata = async (
+    device: BluetoothDevice,
+    metadata: Record<string, Uint8Array | undefined>
+  ): Promise<void> => {
+    try {
+      const service = await device.gatt?.getPrimaryService('audio_remote_control');
+      if (!service) return;
+      
+      const characteristic = await service.getCharacteristic('track_metadata');
+      const filteredMetadata = Object.fromEntries(
+        Object.entries(metadata).filter(([, value]) => value !== undefined)
+      );
+      
+      const metadataString = JSON.stringify(filteredMetadata);
+      await characteristic.writeValue(new TextEncoder().encode(metadataString));
+    } catch (error) {
+      console.error('Bluetooth metadata update failed:', error);
+    }
+  };
+
+  const showNotification = useCallback((action: string, detail: string): void => {
+    if ('setAppBadge' in navigator) {
+      void navigator.setAppBadge(1);
+      setTimeout(() => void navigator.clearAppBadge(), 2000);
+    }
+  
+    if ('Notification' in window && Notification.permission === 'granted' && currentTrack) {
+      new Notification('Now Playing', {
+        body: `${action}: ${detail}`,
+        icon: currentTrack.album.cover_medium,
+        badge: currentTrack.album.cover_medium,
+        tag: 'media-playback',
+        renotify: true,
+        silent: null
+      } as ExtendedNotificationOptions);
+    }
+  }, [currentTrack]);
+
   useEffect(() => {
     if ('mediaSession' in navigator && currentTrack) {
+      const track = currentTrack as ExtendedTrack;
+      
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack?.title || '',
-        artist: currentTrack?.artist.name || '',
-        album: currentTrack?.album.title || '',
+        title: track.title,
+        artist: track.artist.name,
+        album: track.album.title,
         artwork: [
-          { src: currentTrack?.album.cover_medium || '', sizes: '96x96', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '128x128', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '192x192', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '256x256', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '384x384', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '512x512', type: 'image/png' },
-        ],
+          { src: track.album.cover_medium, sizes: '96x96', type: 'image/jpeg' },
+          { src: track.album.cover_medium.replace('96x96', '256x256'), sizes: '256x256', type: 'image/jpeg' },
+          { src: track.album.cover_medium.replace('96x96', '512x512'), sizes: '512x512', type: 'image/jpeg' }
+        ]
       });
-
-      navigator.mediaSession.setActionHandler('play', () => {
+  
+      if ('mediaSession' in navigator && currentTrack) {
+        navigator.mediaSession.setPositionState({
+          duration: isNaN(audioRef.current.duration) ? 0 : audioRef.current.duration,
+          playbackRate: audioRef.current.playbackRate || 1,
+          position: Math.min(seekPosition || 0, audioRef.current.duration || 0), // Ensure position <= duration
+        });
+      }
+      
+         
+      const handlePlay = () => {
         togglePlay();
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
+        showNotification('Playing', track.title);
+      };
+  
+      const handlePause = () => {
         togglePlay();
+        showNotification('Paused', track.title);
+      };
+  
+      navigator.mediaSession.setActionHandler('play', handlePlay);
+      navigator.mediaSession.setActionHandler('pause', handlePause);
+      navigator.mediaSession.setActionHandler('previoustrack', previousTrack);
+      navigator.mediaSession.setActionHandler('nexttrack', skipTrack);
+  
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          navigator.mediaSession.setPositionState({
+            duration,
+            playbackRate: audioRef.current.playbackRate,
+            position: details.seekTime
+          });
+        }
       });
-
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        previousTrack();
-      });
-
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        skipTrack();
-      });
+  
+      if ('bluetooth' in navigator && navigator.bluetooth?.availableDevices) {
+        const bluetoothMetadata = {
+          title: new TextEncoder().encode(track.title),
+          artist: new TextEncoder().encode(track.artist.name),
+          album: new TextEncoder().encode(track.album.title),
+          duration: new TextEncoder().encode(duration.toString()),
+          currentLyric: lyrics[currentLyricIndex]?.text ? new TextEncoder().encode(lyrics[currentLyricIndex].text) : undefined
+        };
+  
+        navigator.bluetooth.availableDevices.forEach(device => {
+          if (device.gatt?.connected) {
+            void updateBluetoothMetadata(device, bluetoothMetadata);
+          }
+        });
+      }
+  
+      return () => {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+      };
     }
-  }, [currentTrack, previousTrack, skipTrack, togglePlay]);
+  }, [currentTrack, duration, seekPosition, togglePlay, previousTrack, skipTrack, lyrics, currentLyricIndex, showNotification]);
 
 
   const playTrackFromSource = async (track: Track) => {
