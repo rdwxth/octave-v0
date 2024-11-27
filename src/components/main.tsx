@@ -285,22 +285,19 @@ export function SpotifyClone() {
   }, [shuffleOn]);
 
   useEffect(() => {
-    if (lyricsRef.current && currentLyricIndex !== -1) {
-      const lyricsContainer = lyricsRef.current;
-      const currentLyricElement = lyricsContainer.children[currentLyricIndex] as HTMLElement;
-      if (currentLyricElement) {
-        const containerHeight = lyricsContainer.clientHeight;
-        const lyricPosition = currentLyricElement.offsetTop;
-        const lyricHeight = currentLyricElement.clientHeight;
-        const scrollPosition = lyricPosition - containerHeight / 2 + lyricHeight / 2;
-
-        lyricsContainer.scrollTo({
-          top: scrollPosition - 50,
-          behavior: 'smooth',
-        });
-      }
-    }
-  }, [currentLyricIndex]);
+    const updateCurrentLyric = () => {
+      if (lyrics.length === 0) return;
+  
+      const currentTime = parseFloat(audioRef.current.currentTime.toFixed(1));
+      const index = lyrics.findIndex((lyric) => lyric.time > currentTime);
+  
+      setCurrentLyricIndex(index > 0 ? index - 1 : lyrics.length - 1);
+    };
+  
+    const interval = setInterval(updateCurrentLyric, 500); // Check every 500ms
+    return () => clearInterval(interval);
+  }, [lyrics]);
+  
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearch = useCallback(

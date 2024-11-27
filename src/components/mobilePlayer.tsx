@@ -352,20 +352,70 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [textOverflow, setTextOverflow] = useState(false);
   const [isSmallDevice, setIsSmallDevice] = useState(false);
   const [dominantColor, setDominantColor] = useState<string | null>(null);
+  const [userScrolling, setUserScrolling] = useState(false);
+  const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isAutoScrollingRef = useRef(false);
+
+// Modify the handleUserScroll function
+const handleUserScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  console.log('isAutoScrolling:', isAutoScrollingRef.current);
+  
+  if (isAutoScrollingRef.current) {
+    return;
+  }
+
+  setUserScrolling(true);
+  
+  if (userScrollTimeoutRef.current) {
+    clearTimeout(userScrollTimeoutRef.current);
+  }
+
+  userScrollTimeoutRef.current = setTimeout(() => {
+    setUserScrolling(false);
+  }, 3000);
+};
 
   const togglePlayer = () => {
     setIsExpanded(!isExpanded);
     setIsPlayerOpen(!isExpanded);
   };
 
+  // Update the color extraction function
   useEffect(() => {
     const extractColor = async () => {
       try {
-        const palette = await Vibrant.from(currentTrack.album.cover_medium).getPalette();
-        setDominantColor(palette.Vibrant?.getHex() || '#000000'); // Fallback to black
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = currentTrack.album.cover_medium;
+        
+        img.onload = () => {
+          // Create canvas
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+  
+          // Set canvas size to 1x1 as we just want the average color
+          canvas.width = 1;
+          canvas.height = 1;
+  
+          // Draw image and scale it down to 1x1 pixels
+          ctx.drawImage(img, 0, 0, 1, 1);
+          
+          // Get pixel data
+          const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+          
+          // Create color string
+          const color = `rgb(${r}, ${g}, ${b})`;
+          setDominantColor(color);
+        };
+  
+        img.onerror = () => {
+          console.error('Error loading image');
+          setDominantColor('#000000');
+        };
       } catch (error) {
         console.error('Error extracting color:', error);
-        setDominantColor('#000000'); // Fallback to black on error
+        setDominantColor('#000000');
       }
     };
   
@@ -374,23 +424,65 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
     }
   }, [currentTrack.album.cover_medium]);
 
+
+  // Add new state to track if lyrics view is active
   useEffect(() => {
+    // Only proceed if lyrics view is active
+    if (!showLyrics) {
+      return;
+    }
+      
     const lyricsContainer = lyricsRef.current;
-    if (lyricsContainer && currentLyricIndex !== -1) {
+    if (!lyricsContainer || currentLyricIndex === -1 || userScrolling) {
+      return;
+    }
+  
+    const scrollToLyric = () => {
       const currentLyricElement = lyricsContainer.children[currentLyricIndex] as HTMLElement;
       if (currentLyricElement) {
+        isAutoScrollingRef.current = true;
+        
+        // Get the element's position within the container
+        const elementOffset = currentLyricElement.offsetTop;
+        const elementHeight = currentLyricElement.offsetHeight;
         const containerHeight = lyricsContainer.clientHeight;
-        const lyricPosition = currentLyricElement.offsetTop;
-        const lyricHeight = currentLyricElement.clientHeight;
-        const scrollPosition = lyricPosition - containerHeight / 2 + lyricHeight / 2;
+        
+        // Calculate center position
+        const scrollPosition = elementOffset - (containerHeight / 2) + (elementHeight / 2);
+        
+        if (scrollPosition >= 0) {
+          lyricsContainer.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth'
+          });
+        }
   
-        lyricsContainer.scrollTo({
-          top: scrollPosition,
-          behavior: 'smooth',
-        });
+        setTimeout(() => {
+          isAutoScrollingRef.current = false;
+        }, 1000);
       }
+    };
+  
+    // Add a small delay to ensure the container is properly rendered
+    setTimeout(scrollToLyric, 100);
+  
+    return () => {
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+    };
+  }, [currentLyricIndex, userScrolling, showLyrics]);
+
+  // Add this cleanup effect
+useEffect(() => {
+  return () => {
+    if (userScrollTimeoutRef.current) {
+      console.log('🧹 Cleaning up component unmount timeout');
+      clearTimeout(userScrollTimeoutRef.current);
     }
-  }, [currentLyricIndex]);
+  };
+}, []);
+  
 
   // Add this somewhere near the top of the component body
 useEffect(() => {
@@ -666,10 +758,10 @@ const handleForwardClick = () => {
         className="mx-2 rounded-xl overflow-hidden"
         style={{
           background: dominantColor
-            ? `linear-gradient(to bottom, ${dominantColor}AA, #000000EE)`
+            ? `linear-gradient(to bottom, ${dominantColor}CC, rgba(0, 0, 0, 0.95))`
             : 'rgba(0, 0, 0, 0.85)',
-          backdropFilter: 'blur(12px)', // Add blur effect
-          WebkitBackdropFilter: 'blur(12px)', // For Safari support
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
         }}
         drag="x" // Allow horizontal dragging
         dragConstraints={{ left: 0, right: 0 }} // Limit drag to horizontal axis
@@ -824,30 +916,39 @@ const handleForwardClick = () => {
             {/* Main Content */}
             <div className="px-4 flex flex-col items-center">
               {showLyrics ? (
-                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto overflow-hidden ">
-                  <div className="flex items-center mb-6">
-                    <button
-                      onClick={toggleLyricsView}
-                      className="hover:bg-white/10 p-2 rounded-full transition-colors"
-                    >
-                      <ArrowLeft className="w-6 h-6 text-white" />
-                    </button>
-                    <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
-                  </div>
-                  <div className="space-y-6" ref={lyricsRef}>
+                <div 
+                className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden"
+              >
+                <div className="flex items-center mb-6">
+                  <button
+                    onClick={toggleLyricsView}
+                    className="hover:bg-white/10 p-2 rounded-full transition-colors"
+                  >
+                    <ArrowLeft className="w-6 h-6 text-white" />
+                  </button>
+                  <h2 className="text-lg font-semibold text-white ml-4">Lyrics</h2>
+                </div>
+                <div 
+                  className="space-y-6 overflow-y-auto" 
+                  ref={lyricsRef}
+                  style={{ height: 'calc(100% - 4rem)' }}  // Ensure fixed height
+                  onScroll={handleUserScroll}
+                >
                   {lyrics.map((lyric, index) => (
                     <motion.p
                       key={index}
-                      className={`text-lg text-center ${
-                        index === currentLyricIndex ? 'text-white scale-105' : 'text-white/40'
+                      className={`text-lg text-center transition-all duration-300 ${
+                        index === currentLyricIndex 
+                          ? 'text-white scale-105 font-bold'
+                          : 'text-white/40'
                       }`}
                       onClick={() => handleSeek(lyric.time)}
                     >
                       {lyric.text}
                     </motion.p>
                   ))}
-                  </div>
                 </div>
+              </div>
               ) : showQueue ? (
                 <div className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden">
                   <div className="flex items-center mb-6">
@@ -1138,16 +1239,22 @@ const handleForwardClick = () => {
                       <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
 
                       <div className={`grid ${isSmallDevice ? 'grid-cols-3' : 'grid-cols-4'} gap-4 mb-8`}>
-                        {moreOptionsItems.map((item, index) => (
-                          <ActionButton
-                            key={index}
-                            icon={item.icon}
-                            label={item.label}
-                            onClick={() => {
-                              setShowMoreOptions(false);
-                            }}
-                          />
-                        ))}
+{moreOptionsItems.map((item, index) => (
+  <ActionButton
+    key={index}
+    icon={item.icon}
+    label={item.label}
+    active={item.active}
+    onClick={() => {
+      if (item.onClick) {
+        item.onClick();
+      } else if (item.action) {
+        item.action();
+      }
+      setShowMoreOptions(false);
+    }}
+  />
+))}
                         {/* Additional buttons for small devices */}
                         {isSmallDevice &&
                           actionButtons.slice(3).map((btn, index) => (
