@@ -902,25 +902,34 @@ useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isOfflineAvailable, setIsOfflineAvailable] = useState(false);
   
-  useEffect(() => {
-    const checkOfflineAvailability = async () => {
-      const offlineTrack = await getOfflineTrack(track.id);
-      setIsOfflineAvailable(!!offlineTrack);
+    useEffect(() => {
+      const checkOfflineAvailability = async () => {
+        const offlineTrack = await getOfflineTrack(track.id);
+        setIsOfflineAvailable(!!offlineTrack);
+      };
+      checkOfflineAvailability();
+    }, [track.id]);
+  
+    const handleTrackClick = (e: React.MouseEvent) => {
+      if (inPlaylistCreation) {
+        e.stopPropagation();
+        toggleTrackSelection(track);
+      } else {
+        playTrack(track);
+      }
     };
-    checkOfflineAvailability();
-  }, [track.id]);
-
+  
     return (
       <div
-        className="group flex items-center space-x-4 bg-gray-800 bg-opacity-40 rounded-lg p-2 relative cursor-pointer"
-        onClick={() => playTrack(track)}
+        className={`group flex items-center space-x-4 bg-gray-800 bg-opacity-40 rounded-lg p-2 relative cursor-pointer ${inPlaylistCreation ? 'selectable' : ''}`}
+        onClick={handleTrackClick}
         onContextMenu={(e) => handleContextMenu(e, track)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="relative">
           <img src={track.album.cover_medium} alt={track.title} className="w-12 h-12 rounded-md" />
-          {isHovered && (
+          {isHovered && !inPlaylistCreation && (
             <button
               className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-opacity duration-300"
               onClick={(e) => {
@@ -944,7 +953,7 @@ useEffect(() => {
               e.stopPropagation();
               toggleTrackSelection(track);
             }}
-            className="ml-auto"
+            className="ml-auto bg-gray-700 rounded-full border-none"
           />
         ) : (
           isHovered && (
@@ -1188,7 +1197,13 @@ useEffect(() => {
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+  const deletePlaylist = (playlist: Playlist) => {
+    const updatedPlaylists = playlists.filter((p) => p.name !== playlist.name);
+    setPlaylists(updatedPlaylists);
+    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+  };
   return (
+
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
       {/* Mobile View */}
       <div className="md:hidden flex flex-col h-full">
@@ -1298,10 +1313,26 @@ useEffect(() => {
               </div>
               {/* Playlist Tracks */}
               <div className="space-y-2">
-                {currentPlaylist.tracks.map((track, index) => (
-                  <TrackItem key={index} track={track} />
-                ))}
+              {currentPlaylist.tracks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64">
+                <p className="text-gray-400 mb-4">This playlist is empty.</p>
+                <button
+                  className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-600"
+                  onClick={() => {
+                  setShowSearchInPlaylistCreation(true);
+                  setCurrentPlaylist(currentPlaylist); // Ensure the current playlist is set
+                  }}
+                >
+                  Add Songs
+                </button>
               </div>
+            ) : (
+              currentPlaylist.tracks.map((track, index) => (
+                <TrackItem key={index} track={track} />
+              ))
+            )}
+              </div>
+          
             </section>
           ) : searchQuery ? (
             <section>
@@ -1314,32 +1345,71 @@ useEffect(() => {
             </section>
           ) : view === 'library' ? (
             <section>
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-2xl font-bold">Your Library</h2>
-      <button
-        className="p-2 rounded-full hover:bg-white/10"
-        onClick={() => setShowCreatePlaylist(true)}
-      >
-        <Plus className="w-6 h-6 text-white" />
-      </button>
-    </div>
-    <div className="grid grid-cols-2 gap-4">
-    {playlists.map((playlist) => (
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Your Library</h2>
+                <button
+                  className="p-2 rounded-full hover:bg-white/10"
+                  onClick={() => setShowCreatePlaylist(true)}
+                >
+                  <Plus className="w-6 h-6 text-white" />
+                </button>
+              </div>
+                <div className="grid grid-cols-1 gap-4">
+                {playlists.map((playlist) => (
                   <div
-                    key={playlist.name}
-                    className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"
-                    onClick={() => openPlaylist(playlist)}
+                  key={playlist.name}
+                  className={`bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer relative ${
+                  playlist.pinned ? 'border-2 border-blue-900' : ''
+                  }`}
+                  draggable
+                  onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', playlist.name);
+                  e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                  e.preventDefault();
+                  const draggedPlaylistName = e.dataTransfer.getData('text/plain');
+                  const draggedPlaylistIndex = playlists.findIndex(p => p.name === draggedPlaylistName);
+                  const targetPlaylistIndex = playlists.findIndex(p => p.name === playlist.name);
+                  const updatedPlaylists = [...playlists];
+                  const [draggedPlaylist] = updatedPlaylists.splice(draggedPlaylistIndex, 1);
+                  updatedPlaylists.splice(targetPlaylistIndex, 0, draggedPlaylist);
+                  setPlaylists(updatedPlaylists);
+                  localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+                  }}
+                  onClick={() => openPlaylist(playlist)} // Add this line
+                  style={{ userSelect: 'none' }} // Make text unselectable
                   >
-                    <img
-                      src={playlist.image}
-                      alt={playlist.name}
-                      className="w-12 h-12 rounded mr-3"
-                    />
-                    <span className="font-medium text-sm">{playlist.name}</span>
+                  <img
+                  src={playlist.image}
+                  alt={playlist.name}
+                  className="w-12 h-12 rounded mr-3"
+                  />
+                  <span className="font-medium text-sm">{playlist.name}</span>
+                  {playlist.downloaded && (
+                  <Download className="w-4 h-4 text-green-500 ml-2" />
+                  )}
+                  <button
+                  className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/10"
+                  onClick={(e) => {
+                  e.stopPropagation();
+                  const options: ContextMenuOption[] = [
+                    { label: 'Pin Playlist', action: () => pinPlaylist(playlist) },
+                    { label: 'Delete Playlist', action: () => deletePlaylist(playlist) },
+                    { label: 'Download Playlist', action: () => downloadPlaylist(playlist) },
+                  ];
+                  setContextMenuPosition({ x: e.clientX, y: e.clientY });
+                  setContextMenuOptions(options);
+                  setShowContextMenu(true);
+                  }}
+                  >
+                  <span className="w-4 h-4 text-white">•••</span>
+                  </button>
                   </div>
                 ))}
-    </div>
-  </section>
+                </div>
+            </section>
           ) :
           
           (
@@ -1975,7 +2045,7 @@ useEffect(() => {
       {/* Create Playlist Modal */}
       {showCreatePlaylist && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96">
+          <div className="bg-black rounded-lg p-6 w-96">
             <h2 className="text-2xl font-bold mb-4">Create Playlist</h2>
             <input
               type="text"
@@ -2055,7 +2125,7 @@ useEffect(() => {
       {/* Add Songs to Playlist Modal */}
       {showSearchInPlaylistCreation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-[480px] max-h-[80vh] overflow-y-auto">
+          <div className="bg-black rounded-lg p-6 w-[480px] max-h-[80vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">Add Songs to Playlist</h2>
             <input
               type="text"
@@ -2092,7 +2162,7 @@ useEffect(() => {
       {/* Add to Playlist Modal */}
       {showAddToPlaylistModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96">
+          <div className="bg-black rounded-lg p-6 w-96">
             <h2 className="text-2xl font-bold mb-4">Add to Playlist</h2>
             {playlists.length === 1 ? (
               <div>
