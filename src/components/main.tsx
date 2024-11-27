@@ -154,6 +154,7 @@ declare global {
   }
 }
 
+
 export function SpotifyClone() {
   const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings' | 'library'>('home');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -217,6 +218,10 @@ export function SpotifyClone() {
       const updatedQueue = prevQueue.filter((t) => t.id !== track.id);
       return [track, ...updatedQueue];
     });
+  };
+
+  const removeFromQueue = (index: number) => {
+    setQueue((prevQueue) => prevQueue.filter((_, i) => i !== index));
   };
 
 
@@ -1341,6 +1346,7 @@ useEffect(() => {
             currentTrack={currentTrack}
             currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
             isPlaying={isPlaying}
+            removeFromQueue={removeFromQueue}
             togglePlay={togglePlay}
             skipTrack={skipTrack}
             previousTrack={previousTrack}

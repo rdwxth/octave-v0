@@ -7,8 +7,8 @@ import {
   Music, Download, Share2, Radio, Plus, Library,
   Shuffle, Repeat, Repeat1, Mic2, ListMusic,
   ArrowLeft, MoreHorizontal, Cast, Airplay,
-  Ban, Crown, Settings,
-  Share, Star, RefreshCw, Flag, AlertCircle, Lock, UserPlus
+  Ban, Crown, Settings, 
+  Share, Star, RefreshCw, Flag, AlertCircle, Lock, UserPlus, Trash2,
 } from 'lucide-react';
 
 import Vibrant from 'node-vibrant'; // Import library
@@ -67,6 +67,7 @@ interface MobilePlayerProps {
   repeatMode: RepeatMode;
   setRepeatMode: (mode: RepeatMode) => void;
   toggleLike: () => void;
+  removeFromQueue: (index: number) => void;
   lyrics: Lyric[];
   currentLyricIndex: number;
   showLyrics: boolean;
@@ -277,6 +278,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   shuffleQueue,
   queue,
   currentTrackIndex,
+  removeFromQueue,
   onQueueItemClick,
   setIsPlayerOpen
 }) => {
@@ -925,7 +927,7 @@ const handleForwardClick = () => {
                 </div>
               </div>
               ) : showQueue ? (
-                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto overflow-hidden">
+                <div className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden">
                   <div className="flex items-center mb-6">
                     <button
                       onClick={() => setShowQueue(false)}
@@ -963,30 +965,48 @@ const handleForwardClick = () => {
 
                     {/* Current and upcoming tracks */}
                     {queue.map((track, index) => (
-                      <motion.div
-                        key={`queue-${track.id}-${index}`}
-                        className={`flex items-center space-x-4 p-2 rounded-lg ${
-                          track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
-                        }`}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onQueueItemClick(track, index)}
-                      >
-                        <div className="w-12 h-12 relative rounded-lg overflow-hidden">
-                          <img
-                            src={track.album.cover_medium}
-                            alt={track.title}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium truncate">{track.title}</p>
-                          <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
-                        </div>
-                        <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                          <MoreHorizontal className="w-5 h-5 text-white/60" />
-                        </button>
-                      </motion.div>
-                    ))}
+  <motion.div
+    key={`queue-${track.id}-${index}`}
+    className={`flex items-center space-x-4 p-2 rounded-lg ${
+      index === currentTrackIndex ? 'bg-white/10' : 'hover:bg-white/10'
+    }`}
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => onQueueItemClick(track, index)}
+  >
+    <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+      <img
+        src={track.album.cover_medium}
+        alt={track.title}
+      />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-white font-medium truncate">{track.title}</p>
+      <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
+    </div>
+    <div className="flex items-center space-x-2">
+      <button 
+        className="p-2 hover:bg-white/10 rounded-full transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          // Add removeFromQueue function prop and call it here
+          removeFromQueue(index);
+        }}
+      >
+        <Trash2 className="w-5 h-5 text-white/60" />
+      </button>
+      <button 
+        className="p-2 hover:bg-white/10 rounded-full transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowMoreOptions(true);
+        }}
+      >
+        <MoreHorizontal className="w-5 h-5 text-white/60" />
+      </button>
+    </div>
+  </motion.div>
+))}  
                   </div>
                   {/* Mini Player */}
 <div className="fixed bottom-0 left-0 right-0 z-50 bg-black py-4">
