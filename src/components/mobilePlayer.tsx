@@ -589,6 +589,7 @@ const handleForwardClick = () => {
 
   // Effect for viewport size detection
   useEffect(() => {
+
     const checkViewportSize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -706,21 +707,33 @@ const handleForwardClick = () => {
     ];
 
   // Get visible action buttons based on screen size
-  const getVisibleActionButtons = () => {
-    // Get the first 4 buttons to display
-    const visibleButtons = actionButtons.slice(0, 4);
+  // Get visible action buttons based on screen size and viewport space
+const getVisibleActionButtons = () => {
+  const viewportHeight = window.innerHeight;
+  const smallScreen = viewportHeight <= 667; // iPhone SE and similar
   
-    // Add the 'More' button if there are additional action buttons
-    if (actionButtons.length > 1) {
-      visibleButtons.push({
-        icon: MoreHorizontal,
-        label: 'More',
-        onClick: () => setShowMoreOptions(true), // Opens the modal or menu
-      });
-    }
+  // For small screens, move all buttons to More menu
+  if (smallScreen) {
+    return [{
+      icon: MoreHorizontal,
+      label: 'More',
+      onClick: () => setShowMoreOptions(true),
+    }];
+  }
   
-    return visibleButtons;
-  };
+  // For larger screens, show all buttons if space allows
+  const visibleButtons = actionButtons;
+  
+  if (actionButtons.length > 1) {
+    visibleButtons.push({
+      icon: MoreHorizontal,
+      label: 'More',
+      onClick: () => setShowMoreOptions(true),
+    });
+  }
+  
+  return visibleButtons;
+};
 
   const handleDragEnd = (info: PanInfo) => {
     const threshold = 100; // Minimum distance to trigger a track change
