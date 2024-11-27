@@ -183,7 +183,6 @@ export function SpotifyClone() {
   const [showContextMenu, setShowContextMenu] = useState<boolean>(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<Position>({ x: 0, y: 0 });
   const [contextMenuTrack, setContextMenuTrack] = useState<Track | null>(null);
-  const [contextMenuPlaylist, setContextMenuPlaylist] = useState<Playlist | null>(null);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState<boolean>(false);
   const [newPlaylistName, setNewPlaylistName] = useState<string>('');
   const [newPlaylistImage, setNewPlaylistImage] = useState<string | null>(null);
@@ -874,12 +873,6 @@ useEffect(() => {
 
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
     setContextMenuOptions(options);
-    if ('tracks' in item) {
-      setContextMenuPlaylist(item as Playlist);
-    } else {
-      setContextMenuTrack(item as Track);
-    }
-    setContextMenuTrack(item as Track);
   };
 
   const CustomContextMenu = ({ x, y, onClose, options }: CustomContextMenuProps) => {
@@ -1321,9 +1314,17 @@ useEffect(() => {
             </section>
           ) : view === 'library' ? (
             <section>
-              <h2 className="text-2xl font-bold mb-4">Your Library</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {playlists.map((playlist) => (
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-2xl font-bold">Your Library</h2>
+      <button
+        className="p-2 rounded-full hover:bg-white/10"
+        onClick={() => setShowCreatePlaylist(true)}
+      >
+        <Plus className="w-6 h-6 text-white" />
+      </button>
+    </div>
+    <div className="grid grid-cols-2 gap-4">
+    {playlists.map((playlist) => (
                   <div
                     key={playlist.name}
                     className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"
@@ -1337,8 +1338,8 @@ useEffect(() => {
                     <span className="font-medium text-sm">{playlist.name}</span>
                   </div>
                 ))}
-              </div>
-            </section>
+    </div>
+  </section>
           ) :
           
           (
