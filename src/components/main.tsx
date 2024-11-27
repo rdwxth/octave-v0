@@ -911,28 +911,30 @@ useEffect(() => {
   interface ArtistSelectionProps {
     onComplete: (selectedArtists: Artist[]) => void;
   }
-  
   const ArtistSelection: React.FC<ArtistSelectionProps> = ({ onComplete }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<Artist[]>([]);
     const [selectedArtists, setSelectedArtists] = useState<Artist[]>([]);
-
+    const [isLoading, setIsLoading] = useState(false);
+  
     useEffect(() => {
       const savedArtists = JSON.parse(localStorage.getItem('favoriteArtists') || '[]');
       setSelectedArtists(savedArtists);
     }, []);
-
+  
     const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchTerm(e.target.value);
       if (e.target.value.length > 2) {
-        const response = await fetch(`https://walt-brazil-galleries-robert.trycloudflare.com/api/search/artists?query=${e.target.value}`);
+        setIsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/search/artists?query=${e.target.value}`);
         const data = await response.json();
         setSearchResults(data.results.filter((artist: Artist) => !selectedArtists.some((a) => a.id === artist.id)));
+        setIsLoading(false);
       } else {
         setSearchResults([]);
       }
     };
-
+  
     const handleArtistSelect = (artist: Artist) => {
       if (selectedArtists.length < 5 && !selectedArtists.some((a) => a.id === artist.id)) {
         setSelectedArtists((prev) => {
@@ -942,7 +944,7 @@ useEffect(() => {
         });
       }
     };
-
+  
     const handleArtistUnselect = (artist: Artist) => {
       setSelectedArtists((prev) => {
         const updatedArtists = prev.filter((a) => a.id !== artist.id);
@@ -950,45 +952,112 @@ useEffect(() => {
         return updatedArtists;
       });
     };
-
-    const handleComplete = () => {
-      localStorage.setItem('onboardingDone', 'true');
-      onComplete(selectedArtists);
-    };
-
+  
     return (
-      <div className="p-6 text-center mx-auto flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-2xl font-bold mb-4 text-white">Curate Your Taste</h2>
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={handleSearch}
-          className="w-full px-4 py-2 rounded-full bg-gray-700 text-white placeholder-gray-400 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search for artists..."
-        />
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {selectedArtists.map((artist) => (
-            <div key={artist.id} className="relative cursor-pointer" onClick={() => handleArtistUnselect(artist)}>
-              <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full border-4 border-blue-500" />
-            </div>
-          ))}
+      <div className="bg-gradient-to-b from-gray-900 to-black h-full text-white p-6">
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold">Choose Your Vibe</h2>
+          <p className="text-lg text-gray-400 mt-2">Pick up to 5 artists you love to get started!</p>
         </div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="relative mb-6">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleSearch}
+            placeholder="Search for artists..."
+            className="w-full p-4 rounded-full bg-gray-800 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          {isLoading && (
+            <div className="absolute right-4 top-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-purple-400"></div>
+            </div>
+          )}
+        </div>
+        <div className="mb-8">
+          {selectedArtists.length > 0 && (
+            <>
+              <h3 className="text-2xl font-semibold mb-4">Selected Artists</h3>
+              <div className="flex flex-wrap gap-4">
+                {selectedArtists.map((artist) => (
+                  <div
+                    key={artist.id}
+                    className="w-24 flex flex-col items-center cursor-pointer"
+                    onClick={() => handleArtistUnselect(artist)}
+                  >
+                    <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full" />
+                    <span className="text-sm mt-2 text-gray-300">{artist.name}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
           {searchResults.map((artist) => (
-            <div key={artist.id} className="relative cursor-pointer" onClick={() => handleArtistSelect(artist)}>
-              <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full border-4 border-gray-700" />
+            <div
+              key={artist.id}
+              className="relative flex flex-col items-center cursor-pointer"
+              onClick={() => handleArtistSelect(artist)}
+            >
+              <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full" />
+              <span className="text-sm mt-2">{artist.name}</span>
             </div>
           ))}
         </div>
-        <button
-          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-full hover:bg-blue-600 transition-transform transform hover:scale-105"
-          onClick={handleComplete}
-        >
-          Complete
-        </button>
+        <div className="fixed bottom-4 left-4 right-4 flex justify-between">
+          <div className="text-sm text-gray-400">
+            {selectedArtists.length} of 5 selected
+          </div>
+          <button
+            onClick={() => onComplete(selectedArtists)}
+            className={`px-6 py-3 rounded-full font-medium transition ${
+              selectedArtists.length === 0
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-blue-600 hover:to-purple-600'
+            }`}
+            disabled={selectedArtists.length === 0}
+          >
+            {selectedArtists.length === 0 ? 'Select to Continue' : 'Finish Selection'}
+          </button>
+        </div>
       </div>
     );
   };
+
+  const OnboardingStep1: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gradient-to-b from-purple-800 via-blue-700 to-black text-white">
+      <div className="text-center p-8 bg-black/30 backdrop-blur-lg rounded-lg max-w-md">
+        <h1 className="text-5xl font-bold mb-4">Welcome to Octave</h1>
+        <p className="text-lg text-gray-300 mb-6">
+          Discover your sound and let us craft the perfect music experience for you.
+        </p>
+        <button
+          onClick={onComplete}
+          className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-purple-500 to-blue-500 hover:from-blue-500 hover:to-purple-500 rounded-full shadow-lg transition-all"
+        >
+          Get Started
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+const OnboardingStep2: React.FC = () => {
+  return (
+    <div className="flex items-center justify-center h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      <div className="text-center p-8 bg-black/30 backdrop-blur-lg rounded-lg max-w-md">
+        <h1 className="text-4xl font-bold mb-4">Personalize Your Experience</h1>
+        <p className="text-lg text-gray-300 mb-6">
+          Select artists to create your personalized playlist recommendations.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+  
 
   const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false }: TrackItemProps) => {
     const [isHovered, setIsHovered] = useState(false);
@@ -1310,37 +1379,73 @@ useEffect(() => {
     setShowArtistSelection(true);
   };
   
-  const handleArtistSelectionComplete = (artists: Artist[]) => {
+/*************  ✨ Codeium Command ⭐  *************/
+  /**
+   * Called when the user has finished selecting their favorite artists.
+   * Stores the selected artists in localStorage and fetches recommendations
+   * based on those artists. Updates the queue with the recommendations and
+   * sets the first track as current if none are playing. Stores the initial
+   * recommendations in localStorage as well.
+   * @param {Artist[]} artists The selected artists
+   */
+/******  18061b5c-b4de-46ca-8cb7-22c224e4e21b  *******/  const handleArtistSelectionComplete = (artists: Artist[]) => {
     setShowArtistSelection(false);
-    localStorage.setItem('recentlyPlayed', JSON.stringify([]));
+  
+    // Store selected artists in localStorage
+    localStorage.setItem('favoriteArtists', JSON.stringify(artists));
+  
+    // Fetch recommendations based on selected artists
+    const fetchRecommendations = async () => {
+      const recommendations: Track[] = [];
+      
+      for (const artist of artists) {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(artist.name)}`
+          );
+          const data = await response.json();
+          recommendations.push(...data.results.slice(0, 3)); // Get top 3 tracks per artist
+        } catch (error) {
+          console.error('Error fetching recommendations:', error);
+        }
+      }
+  
+      // Update queue with recommendations
+      setQueue(recommendations);
+      
+      // Set first track as current if none playing
+      if (!currentTrack) {
+        setCurrentTrack(recommendations[0]);
+      }
+  
+      // Store initial recommendations
+      localStorage.setItem('recentlyPlayed', JSON.stringify(recommendations.slice(0, 4)));
+      setJumpBackIn(recommendations.slice(0, 4));
+    };
+  
+    void fetchRecommendations();
   };
   
   if (showOnboarding) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-gradient-to-b from-black to-black rounded-lg p-6 w-96 text-center animate-fade-in">
-            <h2 className="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 animate-fade-in">Welcome to Octave!</h2>
-          <p className="text-gray-400 mb-4 animate-fade-in">Curate your taste</p>
-            <button
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-full shadow-lg hover:shadow-xl transition-transform transform hover:scale-105 hover:from-green-500 hover:to-blue-500"
-            onClick={handleOnboardingComplete}
-            >
-            Let's Get Started
-            </button>
-        </div>
-      </div>
+      <OnboardingStep1 onComplete={handleOnboardingComplete} />
     );
   }
   
   if (showArtistSelection) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-black rounded-lg p-6 w-96 text-center animate-fade-in">
-          <ArtistSelection onComplete={handleArtistSelectionComplete} />
+      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black flex items-center justify-center z-50">
+        <div className="relative max-w-4xl mx-auto w-full">
+          <div className="relative p-8 bg-black bg-opacity-80 rounded-lg shadow-lg overflow-y-auto max-h-[80vh]">
+            <ArtistSelection onComplete={handleArtistSelectionComplete} />
+          </div>
         </div>
       </div>
     );
   }
+  
+
+
   return (
 
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
@@ -1765,20 +1870,19 @@ useEffect(() => {
           </nav>
         </aside>
         {/* Main Content */}
-        <main className="flex-1 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 overflow-y-auto custom-scrollbar">
-          <header className="flex justify-between items-center mb-6">
-            <form
-              onSubmit={(e: FormEvent<HTMLFormElement>) => e.preventDefault()}
-              className="w-full max-w-md"
-            >
-              <input
-                type="text"
-                placeholder="Search tracks..."
-                value={searchQuery}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                className="w-full p-2 rounded-full bg-gray-800 text-white"
-              />
-            </form>
+        <main className="flex-1 bg-gradient-to-b from-gray-900 to-black rounded-lg p-6">
+    <header className="flex justify-between items-center mb-8">
+      <h1 className="text-4xl font-bold">Good morning</h1>
+      <form onSubmit={(e: FormEvent<HTMLFormElement>) => e.preventDefault()} className="relative w-96">
+        <input
+          type="text"
+          placeholder="Search tracks..."
+          value={searchQuery}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 rounded-full bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+      </form>
             <div className="relative flex items-center">
               {!window.matchMedia('(display-mode: standalone)').matches && (
               <button
