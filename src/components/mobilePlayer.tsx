@@ -14,14 +14,14 @@ import {
 import Vibrant from 'node-vibrant'; // Import library
 
 // Original interfaces
-interface Artist {
-  name: string;
-}
+// interface Artist {
+//   name: string;
+// }
 
-interface Album {
-  title: string;
-  cover_medium: string;
-}
+// interface Album {
+//   title: string;
+//   cover_medium: string;
+// }
 
 interface Track {
   id: string;
@@ -34,13 +34,18 @@ interface Track {
     cover_medium: string;
   };
 }
-const backClickTimeout: NodeJS.Timeout | null = null;
-const forwardClickTimeout: NodeJS.Timeout | null = null;
 
 
 interface Lyric {
   time: number;
   text: string;
+}
+
+interface ActionButtonProps {
+  icon: React.FC<SVGProps<SVGSVGElement>>;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
 }
 
 type AudioQuality = 'MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER';
@@ -54,6 +59,8 @@ interface MobilePlayerProps {
   skipTrack: () => void | Promise<void>;
   previousTrack: () => void;
   seekPosition: number;
+  visibleActionButtons?: ActionButtonProps[];
+  moreOptionsButtons?: ActionButtonProps[];
   duration: number;
   handleSeek: (time: number) => void; 
   isLiked: boolean;
@@ -86,6 +93,8 @@ const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
+
+
 
 
 const Seekbar: React.FC<SeekbarProps> = ({
@@ -424,6 +433,8 @@ const handleUserScroll = (e: React.UIEvent<HTMLDivElement>) => {
     }
   }, [currentTrack.album.cover_medium]);
 
+  
+
 
   // Add new state to track if lyrics view is active
   useEffect(() => {
@@ -589,7 +600,6 @@ const handleForwardClick = () => {
 
   // Effect for viewport size detection
   useEffect(() => {
-
     const checkViewportSize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -693,14 +703,17 @@ const handleForwardClick = () => {
 
     // Update the moreOptionsItems array
     const moreOptionsItems = [
+      { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
       { icon: Ban, label: "Dislike", action: () => console.log('Blocked') },
       { icon: Share2, label: 'Karoke', action: () => console.log('Karoke Time to Sing!!') },
       { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
       { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
+      { icon: Library, label: 'Add to', onClick: () => setShowAddToPlaylistModal(true) },
       { icon: Share, label: 'Share', action: () => console.log('Shared') },
       { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
       { icon: Flag, label: 'Report', action: () => console.log('Reported') },
-      { icon: Lock, label: 'Download Quality', action: () => setShowAudioMenu(true) },
+      { icon: Download, label: 'Download', onClick: () => console.log('Download') },
+      { icon: Lock, label: 'Audio Quality', onClick: () => console.log('Download') },
       { icon: AlertCircle, label: 'Song Info', action: () => console.log('Info') },
       { icon: Mic2, label: 'Karoke', action: () => console.log('Karoke Time to Sing!!') },
       { icon: Library, label: 'N/A for Now', action: () => console.log('Karoke Time to Sing!!') },
@@ -708,32 +721,44 @@ const handleForwardClick = () => {
 
   // Get visible action buttons based on screen size
   // Get visible action buttons based on screen size and viewport space
-const getVisibleActionButtons = () => {
-  const viewportHeight = window.innerHeight;
-  const smallScreen = viewportHeight <= 667; // iPhone SE and similar
-  
-  // For small screens, move all buttons to More menu
-  if (smallScreen) {
-    return [{
+
+  const [windowDimensions, setWindowDimensions] = useState<{width: number; height: number}>({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+
+
+  const getVisibleActionButtons = () => {
+    const isSmallScreen = windowDimensions.height <= 667 || windowDimensions.width <= 375;
+    const shouldMoveToMoreMenu = isSmallScreen;
+
+    if (shouldMoveToMoreMenu) {
+      return [{
+        icon: MoreHorizontal,
+        label: 'More',
+        onClick: () => setShowMoreOptions(true)
+      }];
+    }
+
+    return [...actionButtons, {
       icon: MoreHorizontal,
       label: 'More',
-      onClick: () => setShowMoreOptions(true),
+      onClick: () => setShowMoreOptions(true)
     }];
-  }
-  
-  // For larger screens, show all buttons if space allows
-  const visibleButtons = actionButtons;
-  
-  if (actionButtons.length > 1) {
-    visibleButtons.push({
-      icon: MoreHorizontal,
-      label: 'More',
-      onClick: () => setShowMoreOptions(true),
-    });
-  }
-  
-  return visibleButtons;
-};
+  };
 
   const handleDragEnd = (info: PanInfo) => {
     const threshold = 100; // Minimum distance to trigger a track change
@@ -881,18 +906,18 @@ const getVisibleActionButtons = () => {
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            ref={playerRef}
-            className="fixed inset-0 z-50"
-            style={{
-              background: 'rgba(0, 0, 0, 0.92)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-            }}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-          >
+          ref={playerRef}
+          className={`fixed inset-0 z-50 flex flex-col ${isSmallDevice ? '' : 'justify-center'}`}
+          style={{
+            background: 'rgba(0, 0, 0, 0.92)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+        >
             {/* Header */}
             <div className="flex items-center justify-between p-4">
               <button
@@ -927,7 +952,7 @@ const getVisibleActionButtons = () => {
             </div>
 
             {/* Main Content */}
-            <div className="px-4 flex flex-col items-center">
+            <div className={`px-4 flex-grow flex flex-col items-center ${isSmallDevice ? '' : 'justify-center min-h-0'}`}>
               {showLyrics ? (
                 <div 
                 className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden"
@@ -963,7 +988,7 @@ const getVisibleActionButtons = () => {
                 </div>
               </div>
               ) : showQueue ? (
-                <div className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden">
+                <div className="h-[calc(100vh-32vh)] w-full overflow-y-auto overflow-hidden">
                   <div className="flex items-center mb-6">
                     <button
                       onClick={() => setShowQueue(false)}
