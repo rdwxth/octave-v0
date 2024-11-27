@@ -155,7 +155,7 @@ declare global {
 }
 
 export function SpotifyClone() {
-  const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings'>('home');
+  const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings' | 'library'>('home');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [jumpBackIn, setJumpBackIn] = useState<Track[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -168,6 +168,8 @@ export function SpotifyClone() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [queue, setQueue] = useState<Track[]>([]);
   const [previousTracks, setPreviousTracks] = useState<Track[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [showMobileLibrary, setShowMobileLibrary] = useState<boolean>(false);
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(1);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
@@ -1218,7 +1220,29 @@ useEffect(() => {
                 ))}
               </div>
             </section>
-          ) : (
+          ) : view === 'library' ? (
+            <section>
+              <h2 className="text-2xl font-bold mb-4">Your Library</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {playlists.map((playlist) => (
+                  <div
+                    key={playlist.name}
+                    className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"
+                    onClick={() => openPlaylist(playlist)}
+                  >
+                    <img
+                      src={playlist.image}
+                      alt={playlist.name}
+                      className="w-12 h-12 rounded mr-3"
+                    />
+                    <span className="font-medium text-sm">{playlist.name}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) :
+          
+          (
             <>
               {/* Playlists */}
               <section className="mb-6">
@@ -1301,7 +1325,8 @@ useEffect(() => {
           <button
           className="flex flex-col items-center text-gray-400 hover:text-white"
           onClick={() => {
-            setShowLibrary(true);
+            setShowMobileLibrary(true);
+            setView('library');
           }}
         >
           <Library className="w-6 h-6" />
@@ -1711,6 +1736,7 @@ useEffect(() => {
                   ))}
                 </div>
               </section>
+              
               {/* Recommended Tracks */}
               <section>
                 <h2 className="text-2xl font-bold mb-4">Recommended</h2>
