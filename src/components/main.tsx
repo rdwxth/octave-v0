@@ -1314,9 +1314,17 @@ useEffect(() => {
             </section>
           ) : view === 'library' ? (
             <section>
-              <h2 className="text-2xl font-bold mb-4">Your Library</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Your Library</h2>
+                <button
+                  className="p-2 rounded-full hover:bg-white/10"
+                  onClick={() => setShowCreatePlaylist(true)}
+                >
+                  <Plus className="w-6 h-6 text-white" />
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                {playlists.map((playlist) => (
+              {playlists.map((playlist) => (
                   <div
                     key={playlist.name}
                     className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"

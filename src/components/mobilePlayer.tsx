@@ -441,12 +441,9 @@ const handleUserScroll = (e: React.UIEvent<HTMLDivElement>) => {
   }, [queue, currentTrack, isPlaying]); // Add these dependencies
   
 
-  // Add this somewhere near the top of the component body
-useEffect(() => {
-  console.log("MobilePlayer repeatMode state:", repeatMode);
-}, [repeatMode]);
-
-// In MobilePlayer.tsx, where you handle repeat mode changes
+    useEffect(() => {
+      console.log("MobilePlayer repeatMode state:", repeatMode);
+    }, [repeatMode]);
   
 
 
