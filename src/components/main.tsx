@@ -64,6 +64,8 @@ interface Playlist {
   name: string;
   image: string;
   tracks: Track[];
+  pinned?: boolean;
+  downloaded?: boolean;
 }
 
 interface Lyric {
@@ -181,6 +183,7 @@ export function SpotifyClone() {
   const [showContextMenu, setShowContextMenu] = useState<boolean>(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<Position>({ x: 0, y: 0 });
   const [contextMenuTrack, setContextMenuTrack] = useState<Track | null>(null);
+  const [contextMenuPlaylist, setContextMenuPlaylist] = useState<Playlist | null>(null);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState<boolean>(false);
   const [newPlaylistName, setNewPlaylistName] = useState<string>('');
   const [newPlaylistImage, setNewPlaylistImage] = useState<string | null>(null);
@@ -871,7 +874,11 @@ useEffect(() => {
 
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
     setContextMenuOptions(options);
-    setShowContextMenu(true);
+    if ('tracks' in item) {
+      setContextMenuPlaylist(item as Playlist);
+    } else {
+      setContextMenuTrack(item as Track);
+    }
     setContextMenuTrack(item as Track);
   };
 
@@ -991,7 +998,7 @@ useEffect(() => {
       downloadedTracks++;
       setDownloadProgress((downloadedTracks / totalTracks) * 100);
     }
-
+    playlist.downloaded = true;
     setIsDownloading(false);
   };
 
@@ -1314,17 +1321,9 @@ useEffect(() => {
             </section>
           ) : view === 'library' ? (
             <section>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Your Library</h2>
-                <button
-                  className="p-2 rounded-full hover:bg-white/10"
-                  onClick={() => setShowCreatePlaylist(true)}
-                >
-                  <Plus className="w-6 h-6 text-white" />
-                </button>
-              </div>
+              <h2 className="text-2xl font-bold mb-4">Your Library</h2>
               <div className="grid grid-cols-2 gap-4">
-              {playlists.map((playlist) => (
+                {playlists.map((playlist) => (
                   <div
                     key={playlist.name}
                     className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"
@@ -2094,7 +2093,7 @@ useEffect(() => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-96">
             <h2 className="text-2xl font-bold mb-4">Add to Playlist</h2>
-            {playlists.length === 0 ? (
+            {playlists.length === 1 ? (
               <div>
                 <p className="mb-4">You don&apos;t have any playlists yet. Would you like to create one?</p>
                 <button
