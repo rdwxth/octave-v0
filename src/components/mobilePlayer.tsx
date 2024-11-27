@@ -293,6 +293,8 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   const [showQueue, setShowQueue] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [connectedDevice] = useState<string | null>(null);
+  // Add this near the top of the MobilePlayer component where other state/refs are defined
+    const audioRef = useRef<HTMLAudioElement>(new Audio());
   const lyricsRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [miniPlayerTouchStartY, setMiniPlayerTouchStartY] = useState<number | null>(null);
@@ -424,14 +426,19 @@ const handleUserScroll = (e: React.UIEvent<HTMLDivElement>) => {
   }, [currentLyricIndex, userScrolling, showLyrics]);
 
   // Add this cleanup effect
-useEffect(() => {
-  return () => {
-    if (userScrollTimeoutRef.current) {
-      console.log('🧹 Cleaning up component unmount timeout');
-      clearTimeout(userScrollTimeoutRef.current);
-    }
-  };
-}, []);
+  useEffect(() => {
+    const currentAudioRef = audioRef.current;
+    
+    return () => {
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+      localStorage.setItem('queue', JSON.stringify(queue));
+      localStorage.setItem('currentTrack', JSON.stringify(currentTrack));
+      localStorage.setItem('savedPosition', currentAudioRef.currentTime.toString());
+      localStorage.setItem('wasPlaying', isPlaying.toString());
+    };
+  }, [queue, currentTrack, isPlaying]); // Add these dependencies
   
 
   // Add this somewhere near the top of the component body
@@ -965,48 +972,57 @@ const handleForwardClick = () => {
 
                     {/* Current and upcoming tracks */}
                     {queue.map((track, index) => (
-  <motion.div
-    key={`queue-${track.id}-${index}`}
-    className={`flex items-center space-x-4 p-2 rounded-lg ${
-      index === currentTrackIndex ? 'bg-white/10' : 'hover:bg-white/10'
-    }`}
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={() => onQueueItemClick(track, index)}
-  >
-    <div className="w-12 h-12 relative rounded-lg overflow-hidden">
-      <img
-        src={track.album.cover_medium}
-        alt={track.title}
-      />
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-white font-medium truncate">{track.title}</p>
-      <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
-    </div>
-    <div className="flex items-center space-x-2">
-      <button 
-        className="p-2 hover:bg-white/10 rounded-full transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          // Add removeFromQueue function prop and call it here
-          removeFromQueue(index);
-        }}
-      >
-        <Trash2 className="w-5 h-5 text-white/60" />
-      </button>
-      <button 
-        className="p-2 hover:bg-white/10 rounded-full transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowMoreOptions(true);
-        }}
-      >
-        <MoreHorizontal className="w-5 h-5 text-white/60" />
-      </button>
-    </div>
-  </motion.div>
-))}  
+                    <AnimatePresence key={`queue-${track.id}-${index}`}>
+                      <motion.div className="relative">
+                        <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-4">
+                          <Trash2 className="w-6 h-6 text-white" />
+                        </div>
+                        
+                        <motion.div
+                          className="relative bg-black"
+                          drag="x"
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.2}
+                          onDragEnd={(event, info: PanInfo) => {
+                            if (info.offset.x < -100) {
+                              removeFromQueue(index);
+                            }
+                          }}
+                        >
+                          <div 
+                            className={`flex items-center space-x-4 p-2 rounded-lg ${
+                              track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
+                            }`}
+                            onClick={() => onQueueItemClick(track, index)}
+                          >
+                            <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+                              <img
+                                src={track.album.cover_medium}
+                                alt={track.title}
+                              />
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium truncate">{track.title}</p>
+                              <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <button 
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowMoreOptions(true);  
+                                }}
+                              >
+                                <MoreHorizontal className="w-5 h-5 text-white/60" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    </AnimatePresence>
+                    ))}
                   </div>
                   {/* Mini Player */}
 <div className="fixed bottom-0 left-0 right-0 z-50 bg-black py-4">

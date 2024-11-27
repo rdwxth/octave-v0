@@ -172,6 +172,7 @@ export function SpotifyClone() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showMobileLibrary, setShowMobileLibrary] = useState<boolean>(false);
   const [shuffleOn, setShuffleOn] = useState<boolean>(false);
+  const [savedPosition, setSavedPosition] = useState<number>(0);
   const [volume, setVolume] = useState<number>(1);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
   const [seekPosition, setSeekPosition] = useState<number>(0);
@@ -215,8 +216,10 @@ export function SpotifyClone() {
   
   const updateQueue = (track: Track) => {
     setQueue((prevQueue) => {
-      const updatedQueue = prevQueue.filter((t) => t.id !== track.id);
-      return [track, ...updatedQueue];
+      // Remove all instances of this track from the queue first
+      const filteredQueue = prevQueue.filter((t) => t.id !== track.id);
+      // Add the track only once at the beginning
+      return [track, ...filteredQueue];
     });
   };
 
@@ -229,10 +232,16 @@ export function SpotifyClone() {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      if (savedPosition && audioRef.current.currentTime === 0) {
+        console.log(`Resuming playback from saved position: ${savedPosition}`);
+        audioRef.current.currentTime = savedPosition;
+      }
+      void audioRef.current.play();
     }
     setIsPlaying(!isPlaying);
-  }, [isPlaying]);
+  }, [isPlaying, savedPosition]);
+  
+  
   
   const previousTrack = useCallback(() => {
     if (previousTracks.length > 0) {
@@ -296,7 +305,23 @@ export function SpotifyClone() {
     setPlaylists(savedPlaylists);
     setJumpBackIn(JSON.parse(localStorage.getItem('recentlyPlayed') || '[]') as Track[]);
 
-    const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
+
+     // Add these lines
+  const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
+  const savedPosition = parseFloat(localStorage.getItem('savedPosition') || '0');
+  const wasPlaying = localStorage.getItem('wasPlaying') === 'true';
+  
+  setQueue(savedQueue);
+  setSavedPosition(savedPosition);
+  
+  if (savedQueue.length > 0) {
+    const savedTrack = JSON.parse(localStorage.getItem('currentTrack') || 'null') as Track;
+    if (savedTrack) {
+      setCurrentTrack(savedTrack);
+      setSeekPosition(savedPosition);
+      setIsPlaying(wasPlaying);
+    }
+  }
     setQueue(savedQueue);
     const savedCurrentTrack = JSON.parse(localStorage.getItem('currentTrack') || 'null') as Track | null;
     if (savedCurrentTrack) {
@@ -430,18 +455,60 @@ export function SpotifyClone() {
     }
   }, [currentTrack]);
 
+
+  // MEDIA API
+
   useEffect(() => {
     if ('mediaSession' in navigator && currentTrack) {
+      // Update the position state
+const updatePositionState = () => {
+  if ('setPositionState' in navigator.mediaSession) {
+    navigator.mediaSession.setPositionState({
+      duration: isNaN(audioRef.current.duration) ? 0 : audioRef.current.duration,
+      playbackRate: audioRef.current.playbackRate,
+      position: audioRef.current.currentTime,
+    });
+  }
+};
+
+// Set up an interval to update the position state every second
+const positionStateInterval = setInterval(updatePositionState, 1000);
+
+// Handle seek events
+navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+  const skipTime = details.seekOffset || 10;
+  audioRef.current.currentTime = Math.max(audioRef.current.currentTime - skipTime, 0);
+  updatePositionState();
+});
+
+navigator.mediaSession.setActionHandler('seekforward', (details) => {
+  const skipTime = details.seekOffset || 10;
+  audioRef.current.currentTime = Math.min(
+    audioRef.current.currentTime + skipTime,
+    audioRef.current.duration
+  );
+  updatePositionState();
+});
+
+navigator.mediaSession.setActionHandler('seekto', (details) => {
+  if (details.seekTime !== undefined) {
+    audioRef.current.currentTime = details.seekTime;
+    updatePositionState();
+  }
+});
       const track = currentTrack as ExtendedTrack;
       
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title,
-        artist: track.artist.name,
-        album: track.album.title,
+        title: currentTrack?.title || '',
+        artist: currentTrack?.artist.name || '',
+        album: currentTrack?.album.title || '',
         artwork: [
-          { src: track.album.cover_medium, sizes: '96x96', type: 'image/jpeg' },
-          { src: track.album.cover_medium.replace('96x96', '256x256'), sizes: '256x256', type: 'image/jpeg' },
-          { src: track.album.cover_medium.replace('96x96', '512x512'), sizes: '512x512', type: 'image/jpeg' }
+          { src: currentTrack?.album.cover_medium || '', sizes: '96x96', type: 'image/png' },
+          { src: currentTrack?.album.cover_medium || '', sizes: '128x128', type: 'image/png' },
+          { src: currentTrack?.album.cover_medium || '', sizes: '192x192', type: 'image/png' },
+          { src: currentTrack?.album.cover_medium || '', sizes: '256x256', type: 'image/png' },
+          { src: currentTrack?.album.cover_medium || '', sizes: '384x384', type: 'image/png' },
+          { src: currentTrack?.album.cover_medium || '', sizes: '512x512', type: 'image/png' },
         ]
       });
   
@@ -497,10 +564,13 @@ export function SpotifyClone() {
       }
   
       return () => {
+        clearInterval(positionStateInterval);
         navigator.mediaSession.setActionHandler('play', null);
         navigator.mediaSession.setActionHandler('pause', null);
         navigator.mediaSession.setActionHandler('previoustrack', null);
         navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekbackward', null);
+        navigator.mediaSession.setActionHandler('seekforward', null);
         navigator.mediaSession.setActionHandler('seekto', null);
       };
     }
@@ -509,23 +579,37 @@ export function SpotifyClone() {
 
   const playTrackFromSource = async (track: Track) => {
     const offlineTrack = await getOfflineTrack(track.id);
-    console.log(offlineTrack);
     if (offlineTrack) {
       audioRef.current.src = offlineTrack;
     } else {
       audioRef.current.src = `${API_BASE_URL}/api/track/${track.id}.mp3`;
     }
-    audioRef.current.play();
+  
+    // Set saved position and log it
+    if (track.id === currentTrack?.id) {
+      console.log(`Setting playback position to: ${savedPosition}`);
+      audioRef.current.currentTime = savedPosition || 0;
+    }
+  
+    audioRef.current.oncanplay = () => {
+      console.log(`Final playback position before play(): ${audioRef.current.currentTime}`);
+      void audioRef.current.play();
+    };
   };
-
+  
+  
 
   const playTrack = (track: Track) => {
     if (currentTrack) {
-        setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]);
+      setPreviousTracks((prev) => {
+        // Remove any duplicates of the current track
+        const filteredPrev = prev.filter((t) => t.id !== currentTrack.id);
+        return [currentTrack, ...filteredPrev.slice(0, 49)];
+      });
     }
     updateQueue(track);
     setCurrentTrack(track);
-};
+  };
 
 
 
@@ -1082,6 +1166,9 @@ useEffect(() => {
   useEffect(() => {
     localStorage.setItem('queue', JSON.stringify(queue));
   }, [queue]);
+
+  
+  
 
   useEffect(() => {
     const updateCurrentLyric = () => {
