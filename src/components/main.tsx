@@ -342,7 +342,11 @@ export function SpotifyClone() {
     audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
     audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
 
-    fetchSearchResults('Kendrick Lamar');
+    const favoriteArtists = JSON.parse(localStorage.getItem('favoriteArtists') || '[]') as Artist[];
+    if (favoriteArtists.length > 0) {
+      const randomArtist = favoriteArtists[Math.floor(Math.random() * favoriteArtists.length)];
+      fetchSearchResults(randomArtist.name);
+    }
 
     return () => {
       audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
@@ -897,6 +901,95 @@ useEffect(() => {
       </div>
     );
   };
+  
+  interface Artist {
+    id: number;
+    name: string;
+    picture_medium: string;
+  }
+  
+  interface ArtistSelectionProps {
+    onComplete: (selectedArtists: Artist[]) => void;
+  }
+  
+  const ArtistSelection: React.FC<ArtistSelectionProps> = ({ onComplete }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<Artist[]>([]);
+    const [selectedArtists, setSelectedArtists] = useState<Artist[]>([]);
+
+    useEffect(() => {
+      const savedArtists = JSON.parse(localStorage.getItem('favoriteArtists') || '[]');
+      setSelectedArtists(savedArtists);
+    }, []);
+
+    const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchTerm(e.target.value);
+      if (e.target.value.length > 2) {
+        const response = await fetch(`https://walt-brazil-galleries-robert.trycloudflare.com/api/search/artists?query=${e.target.value}`);
+        const data = await response.json();
+        setSearchResults(data.results.filter((artist: Artist) => !selectedArtists.some((a) => a.id === artist.id)));
+      } else {
+        setSearchResults([]);
+      }
+    };
+
+    const handleArtistSelect = (artist: Artist) => {
+      if (selectedArtists.length < 5 && !selectedArtists.some((a) => a.id === artist.id)) {
+        setSelectedArtists((prev) => {
+          const updatedArtists = [...prev, artist];
+          localStorage.setItem('favoriteArtists', JSON.stringify(updatedArtists));
+          return updatedArtists;
+        });
+      }
+    };
+
+    const handleArtistUnselect = (artist: Artist) => {
+      setSelectedArtists((prev) => {
+        const updatedArtists = prev.filter((a) => a.id !== artist.id);
+        localStorage.setItem('favoriteArtists', JSON.stringify(updatedArtists));
+        return updatedArtists;
+      });
+    };
+
+    const handleComplete = () => {
+      localStorage.setItem('onboardingDone', 'true');
+      onComplete(selectedArtists);
+    };
+
+    return (
+      <div className="p-6 text-center mx-auto flex flex-col items-center justify-center min-h-screen">
+        <h2 className="text-2xl font-bold mb-4 text-white">Curate Your Taste</h2>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={handleSearch}
+          className="w-full px-4 py-2 rounded-full bg-gray-700 text-white placeholder-gray-400 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Search for artists..."
+        />
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {selectedArtists.map((artist) => (
+            <div key={artist.id} className="relative cursor-pointer" onClick={() => handleArtistUnselect(artist)}>
+              <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full border-4 border-blue-500" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {searchResults.map((artist) => (
+            <div key={artist.id} className="relative cursor-pointer" onClick={() => handleArtistSelect(artist)}>
+              <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full border-4 border-gray-700" />
+            </div>
+          ))}
+        </div>
+        <button
+          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-full hover:bg-blue-600 transition-transform transform hover:scale-105"
+          onClick={handleComplete}
+        >
+          Complete
+        </button>
+      </div>
+    );
+  };
+
   const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false }: TrackItemProps) => {
     const [isHovered, setIsHovered] = useState(false);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1202,10 +1295,57 @@ useEffect(() => {
     setPlaylists(updatedPlaylists);
     localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
   };
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+  const [showArtistSelection, setShowArtistSelection] = useState<boolean>(false);
+  
+  useEffect(() => {
+    const onboardingDone = localStorage.getItem('onboardingDone');
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
+  }, []);
+  
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    setShowArtistSelection(true);
+  };
+  
+  const handleArtistSelectionComplete = (artists: Artist[]) => {
+    setShowArtistSelection(false);
+    localStorage.setItem('recentlyPlayed', JSON.stringify([]));
+  };
+  
+  if (showOnboarding) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-gradient-to-b from-black to-black rounded-lg p-6 w-96 text-center animate-fade-in">
+            <h2 className="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-green-500 animate-fade-in">Welcome to Octave!</h2>
+          <p className="text-gray-400 mb-4 animate-fade-in">Curate your taste</p>
+            <button
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-full shadow-lg hover:shadow-xl transition-transform transform hover:scale-105 hover:from-green-500 hover:to-blue-500"
+            onClick={handleOnboardingComplete}
+            >
+            Let's Get Started
+            </button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (showArtistSelection) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-black rounded-lg p-6 w-96 text-center animate-fade-in">
+          <ArtistSelection onComplete={handleArtistSelectionComplete} />
+        </div>
+      </div>
+    );
+  }
   return (
 
     <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
       {/* Mobile View */}
+ 
       <div className="md:hidden flex flex-col h-full">
         <header className="p-4 flex justify-between items-center">
           <h1 className="text-3xl font-bold">Good morning</h1>
@@ -1435,27 +1575,56 @@ useEffect(() => {
               </section>
               {/* Jump Back In */}
               <section className="mb-6">
-                <h2 className="text-2xl font-bold mb-4">Jump Back In</h2>
-                <div className="flex space-x-4 overflow-x-auto custom-scrollbar">
-                  {jumpBackIn.map((track, index) => (
-                    <div key={index} className="flex-shrink-0 w-40">
-                      <div className="relative">
-                        <img
-                          src={track.album.cover_medium}
-                          alt={track.title}
-                          className="w-40 h-40 object-cover rounded-lg mb-2"
-                        />
-                        <button
-                          className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                          onClick={() => playTrack(track)}
-                        >
-                          <Play className="w-12 h-12 text-white" />
-                        </button>
+
+                {jumpBackIn.length > 0 ? (
+                  
+                  <div className="flex space-x-4 overflow-x-auto custom-scrollbar">
+                                  <h2 className="text-2xl font-bold mb-4">Jump Back In</h2>
+
+                    {jumpBackIn.map((track, index) => (
+                      <div key={index} className="flex-shrink-0 w-40">
+                        <div className="relative">
+                          <img
+                            src={track.album.cover_medium}
+                            alt={track.title}
+                            className="w-40 h-40 object-cover rounded-lg mb-2"
+                          />
+                          <button
+                            className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                            onClick={() => playTrack(track)}
+                          >
+                            <Play className="w-12 h-12 text-white" />
+                          </button>
+                        </div>
+                        <p className="font-medium text-sm">{track.title}</p>
                       </div>
-                      <p className="font-medium text-sm">{track.title}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                <h2 className="text-2xl font-bold mb-4">Suggested</h2>
+                <div className="flex space-x-4 overflow-x-auto custom-scrollbar">
+                      {searchResults.slice(0, 5).map((track, index) => (
+                        <div key={index} className="flex-shrink-0 w-40">
+                          <div className="relative">
+                            <img
+                              src={track.album.cover_medium}
+                              alt={track.title}
+                              className="w-40 h-40 object-cover rounded-lg mb-2"
+                            />
+                            <button
+                              className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                              onClick={() => playTrack(track)}
+                            >
+                              <Play className="w-12 h-12 text-white" />
+                            </button>
+                          </div>
+                          <p className="font-medium text-sm">{track.title}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </section>
               {/* Recommended */}
               <section>
