@@ -705,11 +705,11 @@ const handleForwardClick = () => {
     const moreOptionsItems = [
       { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
       { icon: Ban, label: "Dislike", action: () => console.log('Blocked') },
-      { icon: Share2, label: 'Karoke', action: () => console.log('Karoke Time to Sing!!') },
+      { icon: Share2, label: 'Share', action: () => console.log('Karoke Time to Sing!!') },
       { icon: UserPlus, label: 'Follow', action: () => console.log('Following') },
       { icon: Radio, label: 'Start Radio', action: () => console.log('Started radio') },
       { icon: Library, label: 'Add to', onClick: () => setShowAddToPlaylistModal(true) },
-      { icon: Share, label: 'Share', action: () => console.log('Shared') },
+      { icon: Share, label: 'Upload / Copy', action: () => console.log('Shared') },
       { icon: Music, label: 'Lyrics', active: showLyrics, onClick: toggleLyricsView },
       { icon: Flag, label: 'Report', action: () => console.log('Reported') },
       { icon: Download, label: 'Download', onClick: () => console.log('Download') },
