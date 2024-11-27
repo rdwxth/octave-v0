@@ -64,6 +64,8 @@ interface Playlist {
   name: string;
   image: string;
   tracks: Track[];
+  pinned?: boolean;
+  downloaded?: boolean;
 }
 
 interface Lyric {
@@ -181,6 +183,7 @@ export function SpotifyClone() {
   const [showContextMenu, setShowContextMenu] = useState<boolean>(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<Position>({ x: 0, y: 0 });
   const [contextMenuTrack, setContextMenuTrack] = useState<Track | null>(null);
+  const [contextMenuPlaylist, setContextMenuPlaylist] = useState<Playlist | null>(null);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState<boolean>(false);
   const [newPlaylistName, setNewPlaylistName] = useState<string>('');
   const [newPlaylistImage, setNewPlaylistImage] = useState<string | null>(null);
@@ -871,7 +874,11 @@ useEffect(() => {
 
     setContextMenuPosition({ x: e.clientX, y: e.clientY });
     setContextMenuOptions(options);
-    setShowContextMenu(true);
+    if ('tracks' in item) {
+      setContextMenuPlaylist(item as Playlist);
+    } else {
+      setContextMenuTrack(item as Track);
+    }
     setContextMenuTrack(item as Track);
   };
 
@@ -991,7 +998,7 @@ useEffect(() => {
       downloadedTracks++;
       setDownloadProgress((downloadedTracks / totalTracks) * 100);
     }
-
+    playlist.downloaded = true;
     setIsDownloading(false);
   };
 
@@ -1314,23 +1321,109 @@ useEffect(() => {
             </section>
           ) : view === 'library' ? (
             <section>
-              <h2 className="text-2xl font-bold mb-4">Your Library</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {playlists.map((playlist) => (
-                  <div
-                    key={playlist.name}
-                    className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"
-                    onClick={() => openPlaylist(playlist)}
-                  >
-                    <img
-                      src={playlist.image}
-                      alt={playlist.name}
-                      className="w-12 h-12 rounded mr-3"
-                    />
-                    <span className="font-medium text-sm">{playlist.name}</span>
-                  </div>
-                ))}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Your Library</h2>
+              <div className="flex space-x-2">
+              <button
+                className="bg-gray-700 text-white rounded-full p-2 hover:bg-gray-600"
+                onClick={() => setShowCreatePlaylist(true)}
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+                <button
+                className="bg-gray-700 text-white rounded-full p-2 hover:bg-gray-600"
+                onClick={() => {
+                const sortedPlaylists = [...playlists].sort((a, b) => a.name.localeCompare(b.name));
+                setPlaylists(sortedPlaylists);
+                localStorage.setItem('playlists', JSON.stringify(sortedPlaylists));
+                }}
+                >
+                &#x21C4;
+                </button>
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {playlists.map((playlist) => (
+              <div
+                key={playlist.name}
+                className="bg-gray-900 rounded-lg p-2 flex items-center cursor-pointer relative"
+                onClick={() => openPlaylist(playlist)}
+                draggable
+                onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', playlist.name);
+                }}
+                onDrop={(e) => {
+                e.preventDefault();
+                const draggedPlaylistName = e.dataTransfer.getData('text/plain');
+                const draggedPlaylist = playlists.find((p) => p.name === draggedPlaylistName);
+                if (draggedPlaylist) {
+                  const updatedPlaylists = playlists.filter((p) => p.name !== draggedPlaylistName);
+                  updatedPlaylists.splice(playlists.indexOf(playlist), 0, draggedPlaylist);
+                  setPlaylists(updatedPlaylists);
+                  localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+                }
+                }}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                <img
+                src={playlist.image}
+                alt={playlist.name}
+                className="w-12 h-12 rounded mr-3"
+                />
+                <span className="font-medium text-sm">{playlist.name}</span>
+                {playlist.pinned && (
+                    <svg className="w-6 h-6 text-green-500 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z" />
+                    </svg>
+                )}
+                {playlist.downloaded && (
+                  <Download className="w-6 h-6 text-green-500 ml-2" />
+                )}
+                <button
+                className="ml-auto bg-transparent rounded-full p-2 hover:bg-gray-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenuPlaylist(playlist);
+                  setShowContextMenu(true);
+                }}
+                >
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M6 10a2 2 0 110-4 2 2 0 010 4zm4 0a2 2 0 110-4 2 2 0 010 4zm4 0a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+                </button>
+                {showContextMenu && contextMenuPlaylist && contextMenuPlaylist === playlist && (
+                <div className="absolute right-0 mt-2 w-40 bg-gray-900 rounded-lg shadow-xl z-10 border border-gray-700">
+                  <button
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                  onClick={() => {
+                    const updatedPlaylists = playlists.map((p) =>
+                    p.name === playlist.name ? { ...p, pinned: !p.pinned } : p
+                    );
+                    setPlaylists(updatedPlaylists);
+                    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+                    setShowContextMenu(false);
+                  }}
+                  >
+                  {playlist.pinned ? 'Unpin' : 'Pin'}
+                  </button>
+                  <button
+                  className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 w-full text-left"
+                  onClick={() => {
+                    if (confirm('Are you sure you want to delete this playlist?')) {
+                    const updatedPlaylists = playlists.filter((p) => p.name !== playlist.name);
+                    setPlaylists(updatedPlaylists);
+                    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+                    }
+                    setShowContextMenu(false);
+                  }}
+                  >
+                  Delete
+                  </button>
+                </div>
+                )}
+              </div>
+              ))}
+            </div>
             </section>
           ) :
           
@@ -2086,7 +2179,7 @@ useEffect(() => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-96">
             <h2 className="text-2xl font-bold mb-4">Add to Playlist</h2>
-            {playlists.length === 0 ? (
+            {playlists.length === 1 ? (
               <div>
                 <p className="mb-4">You don&apos;t have any playlists yet. Would you like to create one?</p>
                 <button
