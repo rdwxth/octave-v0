@@ -181,9 +181,16 @@ const Seekbar: React.FC<SeekbarProps> = ({
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
         <div
-          className={`absolute w-3 h-3 bg-white rounded-full shadow-lg cursor-grab`}
-          style={{ top: '50%', transform: 'translateY(-50%)', left: `${localProgress * 100}%` }}
-        />
+  className={`absolute w-3 h-3 bg-white rounded-full shadow-lg cursor-grab transition-opacity duration-200 ${
+    isHovering || isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+  }`}
+  style={{
+    top: '50%',
+    transform: 'translateY(-50%)',
+    left: `${localProgress * 100}%`,
+  }}
+/>
+
       </div>
     </div>
   );
