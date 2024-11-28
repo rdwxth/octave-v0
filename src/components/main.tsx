@@ -136,9 +136,6 @@ declare global {
   interface Navigator {
     setAppBadge(n: number): Promise<void>;
     clearAppBadge(): Promise<void>;
-    bluetooth?: {
-      availableDevices?: BluetoothDevice[];
-    };
   }
 
   interface MediaSession {
@@ -161,6 +158,10 @@ declare global {
     badge?: string;
     tag?: string;
     renotify?: boolean;
+  }
+
+  interface Bluetooth {
+    availableDevices?: BluetoothDevice[];
   }
 }
 
@@ -255,41 +256,47 @@ export function SpotifyClone() {
   
   const previousTrack = useCallback(() => {
     if (previousTracks.length > 0) {
-        const [prevTrack, ...restPreviousTracks] = previousTracks;
-        setCurrentTrack(prevTrack);
-        updateQueue(currentTrack!); // Ensure queue stays consistent
-        setPreviousTracks(restPreviousTracks);
+      const [prevTrack, ...restPreviousTracks] = previousTracks;
+      setCurrentTrack(prevTrack);
+      updateQueue(currentTrack!); // Ensure queue stays consistent
+      setPreviousTracks(restPreviousTracks);
+      setIsPlaying(true); // Keep playing the previous track
     }
-}, [currentTrack, previousTracks]);
+  }, [currentTrack, previousTracks]);
 
   
-  const skipTrack = useCallback(async () => {
-    if (currentTrack) {
-      // Add current track to previous tracks before moving to next
-      setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]); // Keep last 50 tracks
-    }
-    
-    if (queue.length > 1) {
-      const [, ...newQueue] = queue;
+const skipTrack = useCallback(async () => {
+  if (currentTrack) {
+    // Add current track to previous tracks before moving to next
+    setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]); // Keep last 50 tracks
+  }
+  
+  if (queue.length > 1) {
+    const [, ...newQueue] = queue;
+    setCurrentTrack(newQueue[0]);
+    setQueue(newQueue);
+    setIsPlaying(true); // Keep playing the next track
+  } else {
+    const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
+    if (savedQueue.length > 1) {
+      const [, ...newQueue] = savedQueue;
       setCurrentTrack(newQueue[0]);
+      console.log('Setting new queue:', newQueue);
       setQueue(newQueue);
+      localStorage.setItem('queue', JSON.stringify(newQueue));
+      setIsPlaying(true); // Keep playing the next track
     } else {
-      const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
-      if (savedQueue.length > 1) {
-        const [, ...newQueue] = savedQueue;
-        setCurrentTrack(newQueue[0]);
-        console.log('Setting new queue:', newQueue);
-        setQueue(newQueue);
-        localStorage.setItem('queue', JSON.stringify(newQueue));
-      } else {
-        const mostPlayedArtists = getMostPlayedArtists();
-        const randomSongs = await fetchRandomSongs(mostPlayedArtists);
-        setQueue(randomSongs);
-        setCurrentTrack(randomSongs[0]);
-        localStorage.setItem('queue', JSON.stringify(randomSongs));
-      }
+      const mostPlayedArtists = getMostPlayedArtists();
+      const randomSongs = await fetchRandomSongs(mostPlayedArtists);
+      setQueue(randomSongs);
+      setCurrentTrack(randomSongs[0]);
+      localStorage.setItem('queue', JSON.stringify(randomSongs));
+      setIsPlaying(true); // Keep playing the next track
     }
-  }, [currentTrack, queue]);
+  }
+}, [currentTrack, queue]);
+
+
 
   const fetchSearchResults = async (query: string) => {
     try {
@@ -476,15 +483,15 @@ export function SpotifyClone() {
   useEffect(() => {
     if ('mediaSession' in navigator && currentTrack) {
       // Update the position state
-const updatePositionState = () => {
-  if ('setPositionState' in navigator.mediaSession) {
-    navigator.mediaSession.setPositionState({
-      duration: isNaN(audioRef.current.duration) ? 0 : audioRef.current.duration,
-      playbackRate: audioRef.current.playbackRate,
-      position: audioRef.current.currentTime,
-    });
-  }
-};
+      const updatePositionState = () => {
+        if ('setPositionState' in navigator.mediaSession) {
+          navigator.mediaSession.setPositionState({
+            duration: isNaN(audioRef.current.duration) ? 0 : audioRef.current.duration,
+            playbackRate: audioRef.current.playbackRate,
+            position: audioRef.current.currentTime,
+          });
+        }
+      };
 
 // Set up an interval to update the position state every second
 const positionStateInterval = setInterval(updatePositionState, 1000);
@@ -630,9 +637,15 @@ navigator.mediaSession.setActionHandler('seekto', (details) => {
 
 
 
-const addToQueue = (track: Track) => {
-  updateQueue(track); // Ensures no duplicates in the queue
-};
+  const addToQueue = (track: Track) => {
+    setQueue((prevQueue) => {
+      // Check if the track already exists in the queue
+      if (!prevQueue.some((t) => t.id === track.id)) {
+        return [...prevQueue, track];
+      }
+      return prevQueue;
+    });
+  };
 
 
 
