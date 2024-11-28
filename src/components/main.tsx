@@ -627,6 +627,15 @@ const addToQueue = (track: Track) => {
 };
 
 
+const [onboardingStep, setOnboardingStep] = useState<number>(0);
+
+useEffect(() => {
+  const onboardingDone = localStorage.getItem('onboardingDone');
+  if (!onboardingDone) {
+    setOnboardingStep(1);
+  }
+}, []);
+
 
 
   const getMostPlayedArtists = (): string[] => {
@@ -762,6 +771,63 @@ useEffect(() => {
   };
 }, [handleTrackEnd]); // Only re-run if handleTrackEnd changes
   
+
+const handleArtistSelectionComplete = async (artists: Artist[]) => {
+  localStorage.setItem('favoriteArtists', JSON.stringify(artists));
+  localStorage.setItem('onboardingDone', 'true');
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const recommendations: Track[] = [];
+    const fetchPromises = artists.map(async (artist) => {
+      const response = await fetch(
+        `${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(artist.name)}`
+      );
+      const data = await response.json();
+      return data.results.slice(0, 5);
+    });
+
+    const artistTracks = await Promise.all(fetchPromises);
+    const allTracks = artistTracks.flat();
+    const shuffledTracks = allTracks.sort(() => Math.random() - 0.5);
+
+    setQueue(shuffledTracks);
+    setSearchResults(shuffledTracks); // Add this line to use recommendations
+    if (shuffledTracks.length > 0 && !currentTrack) {
+      setCurrentTrack(shuffledTracks[0]);
+      setIsPlaying(true);
+    }
+
+    const recentTracks = shuffledTracks.slice(0, 4);
+    localStorage.setItem('recentlyPlayed', JSON.stringify(recentTracks));
+    setJumpBackIn(recentTracks);
+
+    // Create Liked Songs playlist if needed
+    const existingPlaylists = JSON.parse(localStorage.getItem('playlists') || '[]');
+    if (!existingPlaylists.some((p: Playlist) => p.name === 'Liked Songs')) {
+      const updatedPlaylists = [
+        ...existingPlaylists,
+        { name: 'Liked Songs', image: '/images/liked-songs.webp', tracks: [] }
+      ];
+      setPlaylists(updatedPlaylists);
+      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+    }
+
+  } catch (error) {
+    console.error('Error fetching recommendations:', error);
+  }
+};
+
+
+const handleStep1Complete = () => {
+  setOnboardingStep(2);
+};
+
+const handleStep2Complete = (artists: Artist[]) => {
+  setOnboardingStep(0);
+  localStorage.setItem('onboardingDone', 'true');
+  handleArtistSelectionComplete(artists);
+};
   
 
   const handleTimeUpdate = useCallback(() => {
@@ -1356,85 +1422,23 @@ const OnboardingStep2: React.FC = () => {
     setPlaylists(updatedPlaylists);
     localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
   };
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
-  const [showArtistSelection, setShowArtistSelection] = useState<boolean>(false);
   
-  useEffect(() => {
-    const onboardingDone = localStorage.getItem('onboardingDone');
-    if (!onboardingDone) {
-      setShowOnboarding(true);
-    }
-  }, []);
-  
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    setShowArtistSelection(true);
-  };
-  
-/*************  ✨ Codeium Command ⭐  *************/
-  /**
-   * Called when the user has finished selecting their favorite artists.
-   * Stores the selected artists in localStorage and fetches recommendations
-   * based on those artists. Updates the queue with the recommendations and
-   * sets the first track as current if none are playing. Stores the initial
-   * recommendations in localStorage as well.
-   * @param {Artist[]} artists The selected artists
-   */
-/******  18061b5c-b4de-46ca-8cb7-22c224e4e21b  *******/  const handleArtistSelectionComplete = (artists: Artist[]) => {
-    setShowArtistSelection(false);
-  
-    // Store selected artists in localStorage
-    localStorage.setItem('favoriteArtists', JSON.stringify(artists));
-  
-    // Fetch recommendations based on selected artists
-    const fetchRecommendations = async () => {
-      const recommendations: Track[] = [];
-      
-      for (const artist of artists) {
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(artist.name)}`
-          );
-          const data = await response.json();
-          recommendations.push(...data.results.slice(0, 3)); // Get top 3 tracks per artist
-        } catch (error) {
-          console.error('Error fetching recommendations:', error);
-        }
-      }
-  
-      // Update queue with recommendations
-      setQueue(recommendations);
-      
-      // Set first track as current if none playing
-      if (!currentTrack) {
-        setCurrentTrack(recommendations[0]);
-      }
-  
-      // Store initial recommendations
-      localStorage.setItem('recentlyPlayed', JSON.stringify(recommendations.slice(0, 4)));
-      setJumpBackIn(recommendations.slice(0, 4));
-    };
-  
-    void fetchRecommendations();
-  };
-  
-  if (showOnboarding) {
-    return (
-      <OnboardingStep1 onComplete={handleOnboardingComplete} />
-    );
+
+
+  if (onboardingStep === 1) {
+    return <OnboardingStep1 onComplete={handleStep1Complete} />;
   }
   
-  if (showArtistSelection) {
+  if (onboardingStep === 2) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black flex items-center justify-center z-50">
-        <div className="relative max-w-4xl mx-auto w-full">
-          <div className="relative p-8 bg-black bg-opacity-80 rounded-lg shadow-lg overflow-y-auto max-h-[80vh]">
-            <ArtistSelection onComplete={handleArtistSelectionComplete} />
-          </div>
-        </div>
+      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black">
+        <OnboardingStep2 />
+        <ArtistSelection onComplete={handleStep2Complete} />
       </div>
     );
   }
+
+  
   
 
 
