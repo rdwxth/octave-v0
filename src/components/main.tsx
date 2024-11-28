@@ -10,7 +10,9 @@ import React, {
   FormEvent,
   ChangeEvent,
   MouseEvent,
+  useMemo
 } from 'react';
+
 import MobilePlayer from './mobilePlayer';
 
 
@@ -122,6 +124,12 @@ interface BluetoothRemoteGATTService {
 
 interface BluetoothRemoteGATTCharacteristic {
   writeValue(value: BufferSource): Promise<void>;
+}
+
+interface Artist {
+  id: number;
+  name: string;
+  picture_medium: string;
 }
 
 declare global {
@@ -627,14 +635,6 @@ const addToQueue = (track: Track) => {
 };
 
 
-const [onboardingStep, setOnboardingStep] = useState<number>(0);
-
-useEffect(() => {
-  const onboardingDone = localStorage.getItem('onboardingDone');
-  if (!onboardingDone) {
-    setOnboardingStep(1);
-  }
-}, []);
 
 
 
@@ -772,62 +772,7 @@ useEffect(() => {
 }, [handleTrackEnd]); // Only re-run if handleTrackEnd changes
   
 
-const handleArtistSelectionComplete = async (artists: Artist[]) => {
-  localStorage.setItem('favoriteArtists', JSON.stringify(artists));
-  localStorage.setItem('onboardingDone', 'true');
 
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const recommendations: Track[] = [];
-    const fetchPromises = artists.map(async (artist) => {
-      const response = await fetch(
-        `${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(artist.name)}`
-      );
-      const data = await response.json();
-      return data.results.slice(0, 5);
-    });
-
-    const artistTracks = await Promise.all(fetchPromises);
-    const allTracks = artistTracks.flat();
-    const shuffledTracks = allTracks.sort(() => Math.random() - 0.5);
-
-    setQueue(shuffledTracks);
-    setSearchResults(shuffledTracks); // Add this line to use recommendations
-    if (shuffledTracks.length > 0 && !currentTrack) {
-      setCurrentTrack(shuffledTracks[0]);
-      setIsPlaying(true);
-    }
-
-    const recentTracks = shuffledTracks.slice(0, 4);
-    localStorage.setItem('recentlyPlayed', JSON.stringify(recentTracks));
-    setJumpBackIn(recentTracks);
-
-    // Create Liked Songs playlist if needed
-    const existingPlaylists = JSON.parse(localStorage.getItem('playlists') || '[]');
-    if (!existingPlaylists.some((p: Playlist) => p.name === 'Liked Songs')) {
-      const updatedPlaylists = [
-        ...existingPlaylists,
-        { name: 'Liked Songs', image: '/images/liked-songs.webp', tracks: [] }
-      ];
-      setPlaylists(updatedPlaylists);
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-    }
-
-  } catch (error) {
-    console.error('Error fetching recommendations:', error);
-  }
-};
-
-
-const handleStep1Complete = () => {
-  setOnboardingStep(2);
-};
-
-const handleStep2Complete = (artists: Artist[]) => {
-  setOnboardingStep(0);
-  localStorage.setItem('onboardingDone', 'true');
-  handleArtistSelectionComplete(artists);
-};
   
 
   const handleTimeUpdate = useCallback(() => {
@@ -960,161 +905,9 @@ const handleStep2Complete = (artists: Artist[]) => {
     );
   };
   
-  interface Artist {
-    id: number;
-    name: string;
-    picture_medium: string;
-  }
   
-  interface ArtistSelectionProps {
-    onComplete: (selectedArtists: Artist[]) => void;
-  }
-  const ArtistSelection: React.FC<ArtistSelectionProps> = ({ onComplete }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState<Artist[]>([]);
-    const [selectedArtists, setSelectedArtists] = useState<Artist[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-  
-    useEffect(() => {
-      const savedArtists = JSON.parse(localStorage.getItem('favoriteArtists') || '[]');
-      setSelectedArtists(savedArtists);
-    }, []);
-  
-    const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchTerm(e.target.value);
-      if (e.target.value.length > 2) {
-        setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/search/artists?query=${e.target.value}`);
-        const data = await response.json();
-        setSearchResults(data.results.filter((artist: Artist) => !selectedArtists.some((a) => a.id === artist.id)));
-        setIsLoading(false);
-      } else {
-        setSearchResults([]);
-      }
-    };
-  
-    const handleArtistSelect = (artist: Artist) => {
-      if (selectedArtists.length < 5 && !selectedArtists.some((a) => a.id === artist.id)) {
-        setSelectedArtists((prev) => {
-          const updatedArtists = [...prev, artist];
-          localStorage.setItem('favoriteArtists', JSON.stringify(updatedArtists));
-          return updatedArtists;
-        });
-      }
-    };
-  
-    const handleArtistUnselect = (artist: Artist) => {
-      setSelectedArtists((prev) => {
-        const updatedArtists = prev.filter((a) => a.id !== artist.id);
-        localStorage.setItem('favoriteArtists', JSON.stringify(updatedArtists));
-        return updatedArtists;
-      });
-    };
-  
-    return (
-      <div className="bg-gradient-to-b from-gray-900 to-black h-full text-white p-6">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold">Choose Your Vibe</h2>
-          <p className="text-lg text-gray-400 mt-2">Pick up to 5 artists you love to get started!</p>
-        </div>
-        <div className="relative mb-6">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder="Search for artists..."
-            className="w-full p-4 rounded-full bg-gray-800 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-          {isLoading && (
-            <div className="absolute right-4 top-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-purple-400"></div>
-            </div>
-          )}
-        </div>
-        <div className="mb-8">
-          {selectedArtists.length > 0 && (
-            <>
-              <h3 className="text-2xl font-semibold mb-4">Selected Artists</h3>
-              <div className="flex flex-wrap gap-4">
-                {selectedArtists.map((artist) => (
-                  <div
-                    key={artist.id}
-                    className="w-24 flex flex-col items-center cursor-pointer"
-                    onClick={() => handleArtistUnselect(artist)}
-                  >
-                    <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full" />
-                    <span className="text-sm mt-2 text-gray-300">{artist.name}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-          {searchResults.map((artist) => (
-            <div
-              key={artist.id}
-              className="relative flex flex-col items-center cursor-pointer"
-              onClick={() => handleArtistSelect(artist)}
-            >
-              <img src={artist.picture_medium} alt={artist.name} className="w-24 h-24 rounded-full" />
-              <span className="text-sm mt-2">{artist.name}</span>
-            </div>
-          ))}
-        </div>
-        <div className="fixed bottom-4 left-4 right-4 flex justify-between">
-          <div className="text-sm text-gray-400">
-            {selectedArtists.length} of 5 selected
-          </div>
-          <button
-            onClick={() => onComplete(selectedArtists)}
-            className={`px-6 py-3 rounded-full font-medium transition ${
-              selectedArtists.length === 0
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-blue-600 hover:to-purple-600'
-            }`}
-            disabled={selectedArtists.length === 0}
-          >
-            {selectedArtists.length === 0 ? 'Select to Continue' : 'Finish Selection'}
-          </button>
-        </div>
-      </div>
-    );
-  };
 
-  const OnboardingStep1: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  return (
-    <div className="flex items-center justify-center h-screen bg-gradient-to-b from-purple-800 via-blue-700 to-black text-white">
-      <div className="text-center p-8 bg-black/30 backdrop-blur-lg rounded-lg max-w-md">
-        <h1 className="text-5xl font-bold mb-4">Welcome to Octave</h1>
-        <p className="text-lg text-gray-300 mb-6">
-          Discover your sound and let us craft the perfect music experience for you.
-        </p>
-        <button
-          onClick={onComplete}
-          className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-purple-500 to-blue-500 hover:from-blue-500 hover:to-purple-500 rounded-full shadow-lg transition-all"
-        >
-          Get Started
-        </button>
-      </div>
-    </div>
-  );
-};
-
-
-const OnboardingStep2: React.FC = () => {
-  return (
-    <div className="flex items-center justify-center h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      <div className="text-center p-8 bg-black/30 backdrop-blur-lg rounded-lg max-w-md">
-        <h1 className="text-4xl font-bold mb-4">Personalize Your Experience</h1>
-        <p className="text-lg text-gray-300 mb-6">
-          Select artists to create your personalized playlist recommendations.
-        </p>
-      </div>
-    </div>
-  );
-};
-
+  
   
 
   const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false }: TrackItemProps) => {
@@ -1422,23 +1215,367 @@ const OnboardingStep2: React.FC = () => {
     setPlaylists(updatedPlaylists);
     localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
   };
-  
 
 
-  if (onboardingStep === 1) {
-    return <OnboardingStep1 onComplete={handleStep1Complete} />;
+
+
+
+// Onboarding States
+// Keep the showArtistSelection state and add artistSelectionComplete handler
+const [onboardingStep, setOnboardingStep] = useState<number>(0);
+const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+const [showArtistSelection, setShowArtistSelection] = useState<boolean>(false);
+
+// Add back the artist selection completion handler
+const handleArtistSelectionComplete = async (artists: Artist[]) => {
+  try {
+    // Stop playback
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    
+    // Save artist preferences
+    localStorage.setItem('favoriteArtists', JSON.stringify(artists));
+    setShowArtistSelection(false);
+
+    // Fetch tracks for selected artists
+    const fetchPromises = artists.map(async (artist) => {
+      const response = await fetch(
+        `${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(artist.name)}`
+      );
+      const data = await response.json();
+      return data.results.slice(0, 5);
+    });
+
+    // Process tracks
+    const artistTracks = await Promise.all(fetchPromises);
+    const allTracks = artistTracks.flat();
+    const shuffledTracks = allTracks.sort(() => Math.random() - 0.5);
+
+    // Update player state
+    setQueue(shuffledTracks);
+    setSearchResults(shuffledTracks);
+    
+    if (shuffledTracks.length > 0) {
+      setCurrentTrack(shuffledTracks[0]);
+      setIsPlaying(false);
+    }
+
+    // Set up recent tracks
+    const recentTracks = shuffledTracks.slice(0, 4);
+    localStorage.setItem('recentlyPlayed', JSON.stringify(recentTracks));
+    setJumpBackIn(recentTracks);
+
+    // Initialize Liked Songs playlist if needed
+    if (!playlists.some(p => p.name === 'Liked Songs')) {
+      const updatedPlaylists = [
+        ...playlists,
+        { name: 'Liked Songs', image: '/images/liked-songs.webp', tracks: [] }
+      ];
+      setPlaylists(updatedPlaylists);
+      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
+    }
+  } catch (error) {
+    console.error('Error in artist selection completion:', error);
   }
-  
-  if (onboardingStep === 2) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black">
-        <OnboardingStep2 />
-        <ArtistSelection onComplete={handleStep2Complete} />
+};
+
+
+
+// Initialize onboarding
+useEffect(() => {
+  const onboardingDone = localStorage.getItem('onboardingDone');
+  if (!onboardingDone) {
+    startOnboarding();
+  }
+}, []);
+
+// Core Onboarding Functions
+const startOnboarding = () => {
+  setShowOnboarding(true);
+  setOnboardingStep(1);
+};
+
+const handleOnboardingComplete = () => {
+  localStorage.setItem('onboardingDone', 'true');
+  setShowOnboarding(false);
+  setShowArtistSelection(false);
+  setOnboardingStep(0);
+  setView('home');
+};
+
+const handleStep1Complete = () => {
+  setOnboardingStep(2);
+};
+
+const handleStep2Complete = (artists: Artist[]) => {
+  handleArtistSelectionComplete(artists).then(() => {
+    handleOnboardingComplete();
+  });
+};
+
+// Artist Selection Component
+interface ArtistSelectionProps {
+  onComplete: (selectedArtists: Artist[]) => void;
+}
+
+const ArtistSelection: React.FC<ArtistSelectionProps> = ({ onComplete }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<Artist[]>([]);
+  const [selectedArtists, setSelectedArtists] = useState<Artist[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const performSearch = useCallback(async (value: string, currentSelectedArtists: Artist[]) => {
+    if (value.length > 2) {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/search/artists?query=${encodeURIComponent(value)}`
+        );
+        const data = await response.json();
+        const filteredResults = (data.results || []).filter(
+          (artist: Artist) => !currentSelectedArtists.some((a) => a.id === artist.id)
+        );
+        setSearchResults(filteredResults);
+      } catch (error) {
+        console.error('Error searching artists:', error);
+        setSearchResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  }, []);
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((value: string, selectedArtists: Artist[]) => {
+        performSearch(value, selectedArtists);
+      }, 300),
+    [performSearch]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const handleSearchInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setSearchTerm(value);
+      debouncedSearch(value, selectedArtists);
+    },
+    [debouncedSearch, selectedArtists]
+  );
+
+  const handleArtistSelect = useCallback(
+    (artist: Artist) => {
+      if (selectedArtists.length < 5) {
+        setSelectedArtists((prev) => [...prev, artist]);
+        setSearchResults((prev) => prev.filter((a) => a.id !== artist.id));
+        setSearchTerm('');
+      }
+    },
+    [selectedArtists.length]
+  );
+
+  const handleArtistUnselect = useCallback((artist: Artist) => {
+    setSelectedArtists((prev) => prev.filter((a) => a.id !== artist.id));
+  }, []);
+
+  return (
+    <div className="min-h-screen overflow-y-auto custom-scrollbar bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+      <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      {/* Header Section */}
+        <div className="text-center space-y-6 mb-16">
+          <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-300">
+            Pick Your Vibe
+          </h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+            Select up to 5 artists you love and we'll create your perfect musical atmosphere
+          </p>
+        </div>
+
+        {/* Search Section */}
+        <div className="max-w-3xl mx-auto mb-12">
+          <div
+            className={`relative transform transition-all duration-200 ${
+              isSearchFocused ? 'scale-105' : 'scale-100'
+            }`}
+          >
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search for your favorite artists..."
+                value={searchTerm}
+                onChange={handleSearchInput}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className="w-full px-6 py-4 text-lg bg-white/10 backdrop-blur-xl border border-white/20 
+                         rounded-2xl text-white placeholder-gray-400 outline-none focus:ring-2 
+                         focus:ring-purple-500/50 transition-all duration-300"
+                style={{ caretColor: 'white' }}
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                {isLoading ? (
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent" />
+                ) : (
+                  <Search className="h-6 w-6 text-gray-400" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Selected Artists Section */}
+        {selectedArtists.length > 0 && (
+          <div className="max-w-5xl mx-auto mb-12">
+            <h2 className="text-2xl font-bold text-white mb-6">Selected Artists</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {selectedArtists.map((artist) => (
+                <div
+                  key={artist.id}
+                  className="group relative aspect-square rounded-2xl overflow-hidden 
+                           transform transition-all duration-300 hover:scale-95"
+                  onClick={() => handleArtistUnselect(artist)}
+                >
+                  <img
+                    src={artist.picture_medium}
+                    alt={artist.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
+                                opacity-0 group-hover:opacity-100 transition-opacity duration-300 
+                                flex flex-col justify-end p-4">
+                    <p className="text-white font-semibold">{artist.name}</p>
+                    <p className="text-red-400 text-sm">Click to remove</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Search Results Section */}
+        {searchResults.length > 0 && (
+          <div className="max-w-5xl mx-auto pb-20">
+            <h2 className="text-2xl font-bold text-white mb-6">Search Results</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {searchResults.map((artist) => (
+                <div
+                  key={artist.id}
+                  className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer 
+                           transform transition-all duration-300 hover:scale-105"
+                  onClick={() => handleArtistSelect(artist)}
+                >
+                  <img
+                    src={artist.picture_medium}
+                    alt={artist.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
+                                opacity-0 group-hover:opacity-100 transition-opacity duration-300 
+                                flex flex-col justify-end p-4">
+                    <p className="text-white font-semibold">{artist.name}</p>
+                    <p className="text-green-400 text-sm">Click to select</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom Action Bar */}
+        <div className="fixed bottom-0 inset-x-0 bg-black/80 backdrop-blur-xl border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+            <p className="text-white">
+              <span className="text-2xl font-bold text-purple-400">{selectedArtists.length}</span>
+              <span className="ml-2 text-gray-400">of 5 artists selected</span>
+            </p>
+            <button
+              onClick={() => onComplete(selectedArtists)}
+              disabled={selectedArtists.length === 0}
+              className={`px-8 py-3 rounded-xl font-medium transition-all duration-300 ${
+                selectedArtists.length === 0
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-pink-600 hover:to-purple-600 text-white transform hover:scale-105'
+              }`}
+            >
+              {selectedArtists.length === 0 ? 'Select Artists to Continue' : 'Complete Selection'}
+            </button>
+          </div>
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+};
 
-  
+// Onboarding Steps Components
+const OnboardingStep1: React.FC<{ onComplete: () => void }> = ({ onComplete }) => (
+  <div className="flex items-center justify-center h-screen bg-gradient-to-bl from-[#1e1e2f] via-[#282843] to-[#0d0d14] text-white">
+    <div className="relative text-center p-8 bg-gradient-to-br from-black/50 to-black/70 backdrop-blur-xl rounded-3xl shadow-2xl max-w-lg">
+      {/* Subtle Decorative Elements */}
+      <div className="absolute -top-10 -left-10 w-32 h-32 bg-gradient-to-tr from-purple-600 via-pink-500 to-blue-500 opacity-30 blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-800 opacity-20 blur-3xl" />
+
+      {/* Music Icon */}
+      <div className="flex justify-center mb-8">
+        <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-blue-500 rounded-full p-4 shadow-md">
+          <Music className="w-12 h-12 text-white" />
+        </div>
+      </div>
+
+      {/* Title Section */}
+      <h1 className="text-5xl font-extrabold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-500 to-blue-400">
+        Welcome to Octave
+      </h1>
+      <p className="text-lg text-gray-300 mb-8 leading-relaxed">
+        Your gateway to a world of music tailored just for you. Let’s craft your ultimate
+        soundtrack together.
+      </p>
+
+      {/* Get Started Button */}
+      <button
+        onClick={onComplete}
+        className="px-10 py-4 text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-500 hover:from-purple-500 hover:to-pink-500 text-white rounded-full shadow-xl transform transition-transform hover:translate-y-[-2px] focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50"
+      >
+        Get Started
+      </button>
+
+      {/* Decorative Footer Line */}
+      <div className="mt-10 flex items-center justify-center space-x-2">
+        <div className="h-[2px] w-10 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500" />
+        <p className="text-sm text-gray-400">A personalized music experience awaits</p>
+        <div className="h-[2px] w-10 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+      </div>
+    </div>
+  </div>
+);
+
+// Onboarding Flow Control
+if (showOnboarding) {
+  return (
+    <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black custom-scrollbar overflow-y-auto">
+      {onboardingStep === 1 && <OnboardingStep1 onComplete={handleStep1Complete} />}
+      {onboardingStep === 2 && <ArtistSelection onComplete={handleStep2Complete} />}
+    </div>
+  );
+}
+
+
+if (showArtistSelection) {
+  return (
+    <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black">
+      <ArtistSelection onComplete={handleArtistSelectionComplete} />
+    </div>
+  );
+}
   
 
 
