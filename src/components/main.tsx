@@ -261,36 +261,32 @@ export function SpotifyClone() {
   }, [currentTrack, previousTracks]);
 
   
-const skipTrack = useCallback(async () => {
-  if (currentTrack) {
-    // Add current track to previous tracks before moving to next
-    setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]); // Keep last 50 tracks
-  }
-  
-  if (queue.length > 1) {
-    const [, ...newQueue] = queue;
-    setCurrentTrack(newQueue[0]);
-    setQueue(newQueue);
-    setIsPlaying(true); // Keep playing the next track
-  } else {
-    const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]') as Track[];
-    if (savedQueue.length > 1) {
-      const [, ...newQueue] = savedQueue;
-      setCurrentTrack(newQueue[0]);
-      console.log('Setting new queue:', newQueue);
-      setQueue(newQueue);
-      localStorage.setItem('queue', JSON.stringify(newQueue));
-      setIsPlaying(true); // Keep playing the next track
-    } else {
-      const mostPlayedArtists = getMostPlayedArtists();
-      const randomSongs = await fetchRandomSongs(mostPlayedArtists);
-      setQueue(randomSongs);
-      setCurrentTrack(randomSongs[0]);
-      localStorage.setItem('queue', JSON.stringify(randomSongs));
-      setIsPlaying(true); // Keep playing the next track
+  const skipTrack = useCallback(async () => {
+    if (currentTrack) {
+      setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]);
     }
-  }
-}, [currentTrack, queue]);
+    
+    if (queue.length > 1) {
+      const [, ...newQueue] = queue;
+      setCurrentTrack(newQueue[0]);
+      setQueue(newQueue);
+      setIsPlaying(true); // Ensure playing state is maintained
+    } else {
+      const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]');
+      if (savedQueue.length > 1) {
+        const [, ...newQueue] = savedQueue;
+        setCurrentTrack(newQueue[0]);
+        setQueue(newQueue);
+        setIsPlaying(true); // Ensure playing state is maintained
+      } else {
+        const mostPlayedArtists = getMostPlayedArtists();
+        const randomSongs = await fetchRandomSongs(mostPlayedArtists);
+        setQueue(randomSongs);
+        setCurrentTrack(randomSongs[0]);
+        setIsPlaying(true); // Ensure playing state is maintained
+      }
+    }
+  }, [currentTrack, queue]);
 
 
 
@@ -770,26 +766,18 @@ const skipTrack = useCallback(async () => {
   };
 
   const handleTrackEnd = useCallback(() => {
-    console.log("Track ended, repeat mode:", repeatMode);
-    console.log("Current queue:", queue);
-    console.log("Current track:", currentTrack?.title);
-  
     if (repeatMode === 'one') {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         void audioRef.current.play();
-        setIsPlaying(true);
       }
       return;
     }
   
     if (repeatMode === 'all') {
       const currentIndex = queue.findIndex(track => track.id === currentTrack?.id);
-      console.log("Current index:", currentIndex);
-  
       if (currentIndex === queue.length - 1) {
         setCurrentTrack(queue[0]);
-        setIsPlaying(true);
       } else {
         void skipTrack();
       }
@@ -802,7 +790,7 @@ const skipTrack = useCallback(async () => {
     } else {
       setIsPlaying(false);
     }
-  }, [repeatMode, queue, currentTrack, skipTrack, setIsPlaying]);
+  }, [repeatMode, queue, currentTrack, skipTrack]);
 
   // Effect for managing audio loop property
   useEffect(() => {
