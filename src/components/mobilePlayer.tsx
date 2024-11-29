@@ -89,14 +89,14 @@ interface SeekbarProps {
   buffered?: number;
 }
 
-const formatTime = (seconds: number): string => {
+export const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
 
-const Seekbar: React.FC<SeekbarProps> = ({
+export const Seekbar: React.FC<SeekbarProps> = ({
   progress,
   handleSeek,
   isMiniplayer = false,
@@ -613,7 +613,7 @@ const handleForwardClick = () => {
   };
 
   // Format time helper
-  const formatTime = (seconds: number): string => {
+   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
@@ -713,7 +713,7 @@ const handleForwardClick = () => {
 
   return (
     <div className="px-6 flex flex-col items-center">
-    <div className="mini-player fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50">
+    <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50">
       {/* Mini Player */}
       {!isExpanded && (
         <motion.div
@@ -1485,5 +1485,6 @@ const handleForwardClick = () => {
     </div>
   );
 };
+
 
 export default MobilePlayer;
