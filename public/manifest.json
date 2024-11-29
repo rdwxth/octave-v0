@@ -1,6 +1,6 @@
 {
-  "name": "Streamflix Music - Stream Your Favorite Tunes",
-  "short_name": "Streamflix",
+  "name": "Octave Streaming - Stream Your Favorite Tunes",
+  "short_name": "Octave",
   "description": "Your ultimate music streaming companion. Listen to millions of songs, create playlists, and discover new music with personalized recommendations. Enjoy high-quality audio streaming with offline playback support.",
   "start_url": "/",
   "scope": "/",

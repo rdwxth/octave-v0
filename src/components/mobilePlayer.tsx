@@ -713,12 +713,12 @@ const handleForwardClick = () => {
 
   return (
     <div className="px-6 flex flex-col items-center">
-      <div className="fixed bottom-16 left-0 right-0 z-50">
+    <div className="mini-player fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-50">
       {/* Mini Player */}
       {!isExpanded && (
         <motion.div
         ref={miniPlayerRef}
-        className="mx-2 rounded-xl overflow-hidden"
+        className="mx-2 rounded-xl overflow-hidden mb-[env(safe-area-inset-bottom)]"
         style={{
           background: dominantColor
             ? `linear-gradient(to bottom, ${dominantColor}CC, rgba(0, 0, 0, 0.95))`
@@ -832,7 +832,7 @@ const handleForwardClick = () => {
         {isExpanded && (
           <motion.div
           ref={playerRef}
-          className={`fixed inset-0 z-50 flex flex-col ${isSmallDevice ? '' : 'justify-center'}`}
+          className={`fixed inset-0 z-50 flex flex-col pb-[env(safe-area-inset-bottom)] ${isSmallDevice ? '' : 'justify-center'}`}
           style={{
             background: 'rgba(0, 0, 0, 0.92)',
             backdropFilter: 'blur(20px)',

@@ -1643,10 +1643,10 @@ if (showArtistSelection) {
 
   return (
 
-    <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-black text-white overflow-hidden">
       {/* Mobile View */}
  
-      <div className="md:hidden flex flex-col h-full">
+      <div className="md:hidden flex flex-col h-[100dvh]">
         <header className="p-4 flex justify-between items-center">
           <h1 className="text-3xl font-bold">Good morning</h1>
           <div className="flex space-x-4">
@@ -1686,8 +1686,8 @@ if (showArtistSelection) {
             </li>
           </ul>
         </nav>
-        <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-20">
-          {showLyrics ? (
+        <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-[calc(4rem+2rem+env(safe-area-inset-bottom))]">
+        {showLyrics ? (
             <div className="h-full flex flex-col items-center justify-center">
               <h2 className="text-2xl font-bold mb-4">{currentTrack?.title}</h2>
               <p className="text-lg mb-8">{currentTrack?.artist.name}</p>
@@ -1942,8 +1942,11 @@ if (showArtistSelection) {
         {/* Mobile Footer */}
         {!isPlayerOpen && (
           <footer
-          className="bg-black p-4 flex justify-around fixed bottom-0 left-0 right-0"
-          style={{ zIndex: 9999 }}
+          className="bg-black p-4 flex justify-around fixed bottom-0 left-0 right-0 pb-[env(safe-area-inset-bottom)]"
+          style={{ 
+            zIndex: 9999,
+            paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))'
+          }}
         >
           <button
             className="flex flex-col items-center text-gray-400 hover:text-white"
@@ -2066,7 +2069,7 @@ if (showArtistSelection) {
           </nav>
         </aside>
         {/* Main Content */}
-        <main className="flex-1 bg-gradient-to-b from-gray-900 to-black rounded-lg p-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-b from-gray-900 to-black rounded-lg p-6">
     <header className="flex justify-between items-center mb-8">
       <h1 className="text-4xl font-bold">Good morning</h1>
       <form onSubmit={(e: FormEvent<HTMLFormElement>) => e.preventDefault()} className="relative w-96">

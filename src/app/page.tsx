@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next'
 import { SpotifyClone } from "@/components/main"
 
 export const metadata: Metadata = {
-  title: 'Streamflix Music',
-  description: 'Made by Custom',
+  title: 'Octave Streaming',
+  description: 'Made by Custom and Abdullah',
   openGraph: {
     type: 'website',
-    title: 'Streamflix Music',
-    description: 'Made by Custom',
-    siteName: 'Streamflix Music',
+    title: 'Octave Streaming',
+    description: 'Made by Custom and Abdullah',
+    siteName: 'Oactive Streaming',
   },
 }
 
@@ -18,11 +18,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover' // Add this line
 }
 
 export default function SpotifyPage() {
   return (
-    <main className="min-h-screen bg-black">
+    <main className="min-h-[100dvh] bg-black overscroll-none">
       <SpotifyClone />
     </main>
   )

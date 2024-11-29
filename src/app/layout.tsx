@@ -24,14 +24,17 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
+  minimumScale: 1,
+  interactiveWidget: "resizes-visual"
 }
 
 export const metadata: Metadata = {
   title: {
-    default: "Streamflix Music",
-    template: "%s | Streamflix Music",
+    default: "Octave Streaming",
+    template: "%s | Octave Streaming",
   },
-  description: "Made by Custom",
+  description: "Made by Custom and Abdullah",
   keywords: ["music", "streaming", "spotify", "clone", "nextjs"],
   authors: [{ name: "Your Name" }],
   creator: "Your Name",
@@ -44,22 +47,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://your-domain.com",
-    siteName: "Streamflix Music",
-    title: "Streamflix Music",
-    description: "Made by Custom",
+    siteName: "Octave Streaming",
+    title: "Octave Streaming",
+    description: "Made by Custom and Abdullah",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Streamflix Music",
+        alt: "Octave Streaming",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Streamflix Music",
-    description: "Made by Custom",
+    title: "Oactave Streaming",
+    description: "Made by Custom and Abdullah",
     images: ["/og-image.jpg"],
   },
   icons: {
@@ -78,14 +81,12 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
     <html 
       lang="en" 
-      className="dark"
+      className="dark h-full"
       suppressHydrationWarning
     >
       <head />
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background min-h-screen`}
-      >
-        <main className="relative flex min-h-screen flex-col">
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background min-h-[100dvh] overscroll-none`}>
+        <main className="relative flex min-h-[100dvh] flex-col">
           {children}
         </main>
 
