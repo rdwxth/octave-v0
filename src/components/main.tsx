@@ -57,6 +57,9 @@ interface Track {
     name: string;
   };
   album: {
+    cover_xl: string;
+    cover_big: string;
+    cover_small: string;
     title: string;
     cover_medium: string;
   };
@@ -229,6 +232,21 @@ export function SpotifyClone() {
   };
   
   
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (currentTrack) {
+          setIsPlaying(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentTrack]);
 
   const removeFromQueue = (index: number) => {
     setQueue((prevQueue) => prevQueue.filter((_, i) => i !== index));
@@ -519,15 +537,16 @@ export function SpotifyClone() {
         artist: track.artist.name,
         album: track.album.title,
         artwork: [
-          { src: track.album.cover_medium, sizes: '96x96', type: 'image/jpeg' },
+          { src: track.album.cover_small, sizes: '96x96', type: 'image/jpeg' },
           { src: track.album.cover_medium, sizes: '128x128', type: 'image/jpeg' },
           { src: track.album.cover_medium, sizes: '192x192', type: 'image/jpeg' },
           { src: track.album.cover_medium, sizes: '256x256', type: 'image/jpeg' },
-          { src: track.album.cover_medium, sizes: '384x384', type: 'image/jpeg' },
-          { src: track.album.cover_medium, sizes: '512x512', type: 'image/jpeg' }
+          { src: track.album.cover_big, sizes: '384x384', type: 'image/jpeg' },
+          { src: track.album.cover_xl, sizes: '512x512', type: 'image/jpeg' }
         ]
       });
   
+
       // Action handlers
       const actionHandlers: Record<ExtendedMediaSessionAction, MediaSessionActionHandler> = {
         play: () => {
