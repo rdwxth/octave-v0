@@ -928,7 +928,7 @@ const handleForwardClick = () => {
                     {previousTracks.map((track, index) => (
                       <motion.div
                         key={`prev-${track.id}-${index}`}
-                        className="flex items-center space-x-4 p-2 rounded-lg hover:bg-white/10 opacity-50"
+                        className="flex items-center space-x-4 p-2 rounded-lg hover:bg-white/10 opacity-50" // Added opacity-50
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => onQueueItemClick(track, -1 * (index + 1))}

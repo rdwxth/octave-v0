@@ -224,18 +224,11 @@ export function SpotifyClone() {
       const actualIndex = Math.abs(index + 1);
       setPreviousTracks((prev) => prev.slice(0, actualIndex));
     }
-    updateQueue(track);
     setCurrentTrack(track);
+    // Remove updateQueue call here - we don't want to reorder
   };
   
-  const updateQueue = (track: Track) => {
-    setQueue((prevQueue) => {
-      // Remove all instances of this track from the queue first
-      const filteredQueue = prevQueue.filter((t) => t.id !== track.id);
-      // Add the track only once at the beginning
-      return [track, ...filteredQueue];
-    });
-  };
+  
 
   const removeFromQueue = (index: number) => {
     setQueue((prevQueue) => prevQueue.filter((_, i) => i !== index));
@@ -685,18 +678,31 @@ const skipTrack = useCallback(async () => {
   };
 
 
-
-
-
-  const addToQueue = (track: Track) => {
+  const updateQueue = (track: Track) => {
     setQueue((prevQueue) => {
-      // Check if the track already exists in the queue
-      if (!prevQueue.some((t) => t.id === track.id)) {
-        return [...prevQueue, track];
-      }
-      return prevQueue;
+      const uniqueTracks = Array.from(
+        new Map(
+          [track, ...prevQueue].map(t => [t.id, t])
+        ).values()
+      );
+      return uniqueTracks;
     });
   };
+
+
+  const addToQueue = (tracks: Track | Track[]) => {
+  setQueue((prevQueue) => {
+    // Normalize to an array if a single track is provided
+    const tracksToAdd = Array.isArray(tracks) ? tracks : [tracks];
+
+    // Combine and filter duplicates
+    const updatedQueue = Array.from(
+      new Map([...prevQueue, ...tracksToAdd].map((track) => [track.id, track])).values()
+    );
+
+    return updatedQueue;
+  });
+};
 
 
 
@@ -764,45 +770,37 @@ const skipTrack = useCallback(async () => {
   };
 
   const handleTrackEnd = useCallback(() => {
-    console.log("Track ended, current repeat mode:", repeatMode);
-    console.log("Current queue length:", queue.length);
+    console.log("Track ended, repeat mode:", repeatMode);
+    console.log("Current queue:", queue);
     console.log("Current track:", currentTrack?.title);
   
-    // First, let's handle repeat mode 'one' (single track repeat)
     if (repeatMode === 'one') {
-      console.log("Handling repeat mode ONE");
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         void audioRef.current.play();
+        setIsPlaying(true);
       }
       return;
     }
   
-    // Handle repeat mode 'all' (repeat entire queue)
     if (repeatMode === 'all') {
-      if (queue.length === 1) {
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          void audioRef.current.play();
-        }
+      const currentIndex = queue.findIndex(track => track.id === currentTrack?.id);
+      console.log("Current index:", currentIndex);
+  
+      if (currentIndex === queue.length - 1) {
+        setCurrentTrack(queue[0]);
+        setIsPlaying(true);
       } else {
-        const currentIndex = queue.findIndex(track => track.id === currentTrack?.id);
-        if (currentIndex === queue.length - 1) {
-          setCurrentTrack(queue[0]);
-          setQueue(queue);
-        } else {
-          skipTrack();
-        }
+        void skipTrack();
       }
       return;
     }
   
-    // Default behavior (repeatMode === 'off')
-    console.log("Repeat mode OFF, standard behavior");
+    // No repeat
     if (queue.length > 1) {
-      skipTrack();
+      void skipTrack();
     } else {
-      setIsPlaying(true);
+      setIsPlaying(false);
     }
   }, [repeatMode, queue, currentTrack, skipTrack, setIsPlaying]);
 
