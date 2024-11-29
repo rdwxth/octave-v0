@@ -165,6 +165,9 @@ declare global {
   }
 }
 
+type ExtendedMediaSessionAction = MediaSessionAction | 'skipad';
+
+
 
 export function SpotifyClone() {
   const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings' | 'library'>('home');
@@ -439,25 +442,25 @@ const skipTrack = useCallback(async () => {
     }
   }, [searchQuery, debouncedSearch]);
 
-  const updateBluetoothMetadata = async (
-    device: BluetoothDevice,
-    metadata: Record<string, Uint8Array | undefined>
-  ): Promise<void> => {
-    try {
-      const service = await device.gatt?.getPrimaryService('audio_remote_control');
-      if (!service) return;
+  // const updateBluetoothMetadata = async (
+  //   device: BluetoothDevice,
+  //   metadata: Record<string, Uint8Array | undefined>
+  // ): Promise<void> => {
+  //   try {
+  //     const service = await device.gatt?.getPrimaryService('audio_remote_control');
+  //     if (!service) return;
       
-      const characteristic = await service.getCharacteristic('track_metadata');
-      const filteredMetadata = Object.fromEntries(
-        Object.entries(metadata).filter(([, value]) => value !== undefined)
-      );
+  //     const characteristic = await service.getCharacteristic('track_metadata');
+  //     const filteredMetadata = Object.fromEntries(
+  //       Object.entries(metadata).filter(([, value]) => value !== undefined)
+  //     );
       
-      const metadataString = JSON.stringify(filteredMetadata);
-      await characteristic.writeValue(new TextEncoder().encode(metadataString));
-    } catch (error) {
-      console.error('Bluetooth metadata update failed:', error);
-    }
-  };
+  //     const metadataString = JSON.stringify(filteredMetadata);
+  //     await characteristic.writeValue(new TextEncoder().encode(metadataString));
+  //   } catch (error) {
+  //     console.error('Bluetooth metadata update failed:', error);
+  //   }
+  // };
 
   const showNotification = useCallback((action: string, detail: string): void => {
     if ('setAppBadge' in navigator) {
@@ -482,100 +485,139 @@ const skipTrack = useCallback(async () => {
 
   useEffect(() => {
     if ('mediaSession' in navigator && currentTrack) {
-      // Update the position state
-      const updatePositionState = () => {
-        if ('setPositionState' in navigator.mediaSession) {
-          navigator.mediaSession.setPositionState({
-            duration: isNaN(audioRef.current.duration) ? 0 : audioRef.current.duration,
-            playbackRate: audioRef.current.playbackRate,
-            position: audioRef.current.currentTime,
-          });
+      const track = currentTrack as ExtendedTrack;
+
+      const updateBluetoothMetadata = async (
+        device: BluetoothDevice,
+        metadata: Record<string, Uint8Array | undefined>
+      ): Promise<void> => {
+        try {
+          const service = await device.gatt?.getPrimaryService('audio_remote_control');
+          if (!service) return;
+          
+          const characteristic = await service.getCharacteristic('track_metadata');
+          const filteredMetadata = Object.fromEntries(
+            Object.entries(metadata).filter(([, value]) => value !== undefined)
+          );
+          
+          const metadataString = JSON.stringify(filteredMetadata);
+          await characteristic.writeValue(new TextEncoder().encode(metadataString));
+        } catch (error) {
+          console.error('Bluetooth metadata update failed:', error);
         }
       };
-
-// Set up an interval to update the position state every second
-const positionStateInterval = setInterval(updatePositionState, 1000);
-
-// Handle seek events
-navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-  const skipTime = details.seekOffset || 10;
-  audioRef.current.currentTime = Math.max(audioRef.current.currentTime - skipTime, 0);
-  updatePositionState();
-});
-
-navigator.mediaSession.setActionHandler('seekforward', (details) => {
-  const skipTime = details.seekOffset || 10;
-  audioRef.current.currentTime = Math.min(
-    audioRef.current.currentTime + skipTime,
-    audioRef.current.duration
-  );
-  updatePositionState();
-});
-
-navigator.mediaSession.setActionHandler('seekto', (details) => {
-  if (details.seekTime !== undefined) {
-    audioRef.current.currentTime = details.seekTime;
-    updatePositionState();
-  }
-});
-      const track = currentTrack as ExtendedTrack;
       
+      // Helper function for position state updates
+      const updatePositionState = () => {
+        try {
+          if ('setPositionState' in navigator.mediaSession) {
+            const duration = audioRef.current?.duration || 0;
+            const position = Math.min(audioRef.current?.currentTime || 0, duration);
+            navigator.mediaSession.setPositionState({
+              duration,
+              playbackRate: audioRef.current?.playbackRate || 1.0,
+              position
+            });
+          }
+        } catch (error) {
+          console.error('Error updating position state:', error);
+        }
+      };
+  
+      // Media session metadata
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack?.title || '',
-        artist: currentTrack?.artist.name || '',
-        album: currentTrack?.album.title || '',
+        title: track.title,
+        artist: track.artist.name,
+        album: track.album.title,
         artwork: [
-          { src: currentTrack?.album.cover_medium || '', sizes: '96x96', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '128x128', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '192x192', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '256x256', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '384x384', type: 'image/png' },
-          { src: currentTrack?.album.cover_medium || '', sizes: '512x512', type: 'image/png' },
+          { src: track.album.cover_medium, sizes: '96x96', type: 'image/jpeg' },
+          { src: track.album.cover_medium, sizes: '128x128', type: 'image/jpeg' },
+          { src: track.album.cover_medium, sizes: '192x192', type: 'image/jpeg' },
+          { src: track.album.cover_medium, sizes: '256x256', type: 'image/jpeg' },
+          { src: track.album.cover_medium, sizes: '384x384', type: 'image/jpeg' },
+          { src: track.album.cover_medium, sizes: '512x512', type: 'image/jpeg' }
         ]
       });
   
-      if ('mediaSession' in navigator && currentTrack) {
-        navigator.mediaSession.setPositionState({
-          duration: isNaN(audioRef.current.duration) ? 0 : audioRef.current.duration,
-          playbackRate: audioRef.current.playbackRate || 1,
-          position: Math.min(seekPosition || 0, audioRef.current.duration || 0), // Ensure position <= duration
-        });
-      }
-      
-         
-      const handlePlay = () => {
-        togglePlay();
-        showNotification('Playing', track.title);
+      // Action handlers
+      const actionHandlers: Record<ExtendedMediaSessionAction, MediaSessionActionHandler> = {
+        play: () => {
+          void audioRef.current?.play();
+          navigator.mediaSession.playbackState = 'playing';
+          showNotification('Playing', track.title);
+          togglePlay();
+        },
+        pause: () => {
+          audioRef.current?.pause();
+          navigator.mediaSession.playbackState = 'paused';
+          showNotification('Paused', track.title);
+          togglePlay();
+        },
+        previoustrack: previousTrack,
+        nexttrack: skipTrack,
+        seekto: (details) => {
+          if (details.seekTime !== undefined && audioRef.current) {
+            audioRef.current.currentTime = details.seekTime;
+            updatePositionState();
+          }
+        },
+        seekbackward: (details) => {
+          const skipTime = details.seekOffset || 10;
+          if (audioRef.current) {
+            audioRef.current.currentTime = Math.max(audioRef.current.currentTime - skipTime, 0);
+            updatePositionState();
+          }
+        },
+        seekforward: (details) => {
+          const skipTime = details.seekOffset || 10;
+          if (audioRef.current) {
+            audioRef.current.currentTime = Math.min(
+              audioRef.current.currentTime + skipTime,
+              audioRef.current.duration || 0
+            );
+            updatePositionState();
+          }
+        },
+        stop: () => {
+          audioRef.current?.pause();
+          audioRef.current.currentTime = 0;
+          navigator.mediaSession.playbackState = 'none';
+          setIsPlaying(false);
+        },
+        skipad: () => {
+          console.log('Skip ad action triggered');
+        }
       };
   
-      const handlePause = () => {
-        togglePlay();
-        showNotification('Paused', track.title);
-      };
-  
-      navigator.mediaSession.setActionHandler('play', handlePlay);
-      navigator.mediaSession.setActionHandler('pause', handlePause);
-      navigator.mediaSession.setActionHandler('previoustrack', previousTrack);
-      navigator.mediaSession.setActionHandler('nexttrack', skipTrack);
-  
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined) {
-          audioRef.current.currentTime = details.seekTime;
-          navigator.mediaSession.setPositionState({
-            duration,
-            playbackRate: audioRef.current.playbackRate,
-            position: details.seekTime
-          });
+      // Register handlers
+      Object.entries(actionHandlers).forEach(([action, handler]) => {
+        try {
+          navigator.mediaSession.setActionHandler(
+            action as MediaSessionAction,
+            handler as MediaSessionActionHandler
+          );
+        } catch (error) {
+          console.warn(`Action '${action}' is not supported`);
         }
       });
   
+      // Position state updates
+      const positionUpdateInterval = setInterval(updatePositionState, 1000);
+  
+      // Bluetooth metadata
       if ('bluetooth' in navigator && navigator.bluetooth?.availableDevices) {
         const bluetoothMetadata = {
           title: new TextEncoder().encode(track.title),
           artist: new TextEncoder().encode(track.artist.name),
           album: new TextEncoder().encode(track.album.title),
           duration: new TextEncoder().encode(duration.toString()),
-          currentLyric: lyrics[currentLyricIndex]?.text ? new TextEncoder().encode(lyrics[currentLyricIndex].text) : undefined
+          currentTime: new TextEncoder().encode(seekPosition.toString()),
+          genre: track.genre ? new TextEncoder().encode(track.genre) : undefined,
+          year: track.year ? new TextEncoder().encode(track.year.toString()) : undefined,
+          trackNumber: track.trackNumber ? new TextEncoder().encode(track.trackNumber.toString()) : undefined,
+          currentLyric: lyrics[currentLyricIndex]?.text 
+            ? new TextEncoder().encode(lyrics[currentLyricIndex].text)
+            : undefined
         };
   
         navigator.bluetooth.availableDevices.forEach(device => {
@@ -586,18 +628,27 @@ navigator.mediaSession.setActionHandler('seekto', (details) => {
       }
   
       return () => {
-        clearInterval(positionStateInterval);
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('seekbackward', null);
-        navigator.mediaSession.setActionHandler('seekforward', null);
-        navigator.mediaSession.setActionHandler('seekto', null);
+        clearInterval(positionUpdateInterval);
+        Object.keys(actionHandlers).forEach(action => {
+          try {
+            navigator.mediaSession.setActionHandler(action as MediaSessionAction, null);
+          } catch (error) {
+            console.warn(`Failed to clear action handler for '${action}'`);
+          }
+        });
       };
     }
-  }, [currentTrack, duration, seekPosition, togglePlay, previousTrack, skipTrack, lyrics, currentLyricIndex, showNotification]);
-
+  }, [
+    currentTrack,
+    duration,
+    seekPosition,
+    togglePlay,
+    previousTrack,
+    skipTrack,
+    lyrics,
+    currentLyricIndex,
+    showNotification,
+  ]);
 
   const playTrackFromSource = async (track: Track) => {
     const offlineTrack = await getOfflineTrack(track.id);
