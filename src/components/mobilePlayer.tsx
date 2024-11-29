@@ -9,6 +9,7 @@ import {
   ArrowLeft, MoreHorizontal, Cast, Airplay,
   Ban, Crown, Settings, 
   Share, Star, RefreshCw, Flag, AlertCircle, Lock, UserPlus, Trash2,
+  ListX,
 } from 'lucide-react';
 
 import Vibrant from 'node-vibrant'; // Import library
@@ -55,6 +56,7 @@ interface MobilePlayerProps {
   currentTrack: Track;
   isPlaying: boolean;
   previousTracks: Track[]; // Add this
+  setQueue: (queue: Track[]) => void; // Add this
   togglePlay: () => void;
   skipTrack: () => void | Promise<void>;
   previousTrack: () => void;
@@ -242,6 +244,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   currentTrack,
   isPlaying,
   togglePlay,
+  setQueue,
   previousTracks,
   skipTrack,
   previousTrack,
@@ -913,16 +916,29 @@ const handleForwardClick = () => {
                 </div>
               </div>
               ) : showQueue ? (
-                <div className="h-[calc(100vh-10vh)] w-full overflow-y-auto overflow-hidden">
-                  <div className="flex items-center mb-6">
-                    <button
-                      onClick={() => setShowQueue(false)}
-                      className="hover:bg-white/10 p-2 rounded-full transition-colors"
-                    >
-                      <ArrowLeft className="w-6 h-6 text-white" />
-                    </button>
-                    <h2 className="text-lg font-semibold text-white ml-4">Up Next</h2>
-                  </div>
+                <div className="h-[calc(100vh-15vh)] w-full overflow-y-auto overflow-hidden"
+                style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
+                >
+                  <div className="flex items-center justify-between mb-6">
+  <div className="flex items-center">
+    <button
+      onClick={() => setShowQueue(false)}
+      className="hover:bg-white/10 p-2 rounded-full transition-colors"
+    >
+      <ArrowLeft className="w-6 h-6 text-white" />
+    </button>
+    <h2 className="text-lg font-semibold text-white ml-4">Up Next</h2>
+  </div>
+  <button
+    onClick={() => setQueue([])}
+    className="flex items-center space-x-2 px-4 py-2 bg-white/10 rounded-full hover:bg-white/20"
+  >
+    <ListX className="w-5 h-5 text-white" />
+    <span className="text-sm text-white">Clear Queue</span>
+  </button>
+</div>
+
+                  
                   <div className="space-y-4">
                     {/* Previous tracks - greyed out */}
                     {previousTracks.map((track, index) => (
@@ -951,57 +967,62 @@ const handleForwardClick = () => {
 
                     {/* Current and upcoming tracks */}
                     {queue.map((track, index) => (
-                    <AnimatePresence key={`queue-${track.id}-${index}`}>
-                      <motion.div className="relative">
-                        <div className="absolute inset-0 bg-red-500 flex items-center justify-end pr-4">
-                          <Trash2 className="w-6 h-6 text-white" />
-                        </div>
-                        
-                        <motion.div
-                          className="relative bg-black"
-                          drag="x"
-                          dragConstraints={{ left: 0, right: 0 }}
-                          dragElastic={0.2}
-                          onDragEnd={(event, info: PanInfo) => {
-                            if (info.offset.x < -100) {
-                              removeFromQueue(index);
-                            }
-                          }}
-                        >
-                          <div 
-                            className={`flex items-center space-x-4 p-2 rounded-lg ${
-                              track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
-                            }`}
-                            onClick={() => onQueueItemClick(track, index)}
-                          >
-                            <div className="w-12 h-12 relative rounded-lg overflow-hidden">
-                              <img
-                                src={track.album.cover_medium}
-                                alt={track.title}
-                              />
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-medium truncate">{track.title}</p>
-                              <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
-                            </div>
+ <AnimatePresence key={`queue-${track.id}-${index}`}>
+   <motion.div className="relative">
+     <div className="absolute inset-0 flex justify-between">
+       <div className="flex-1 bg-green-500 flex items-center pl-4">
+         <Download className="w-6 h-6 text-white" />
+       </div>
+       <div className="flex-1 bg-red-500 flex items-center justify-end pr-4">
+         <Trash2 className="w-6 h-6 text-white" />
+       </div>
+     </div>
+     
+     <motion.div
+       className="relative bg-black"
+       drag="x"
+       dragConstraints={{ left: 0, right: 0 }}
+       dragElastic={0.2}
+       onDragEnd={(event, info: PanInfo) => {
+         if (info.offset.x < -100) {
+           removeFromQueue(index);
+         } else if (info.offset.x > 100) {
+           console.log("Downloaded");
+         }
+       }}
+     >
+       <div 
+         className={`flex items-center space-x-4 p-2 rounded-lg bg-black ${
+           track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/10'
+         }`}
+         onClick={() => onQueueItemClick(track, index)}
+       >
+         <div className="w-12 h-12 relative rounded-lg overflow-hidden">
+           <img
+             src={track.album.cover_medium}
+             alt={track.title}
+           />
+         </div>
+         
+         <div className="flex-1 min-w-0">
+           <p className="text-white font-medium truncate">{track.title}</p>
+           <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
+         </div>
 
-                            <div className="flex items-center space-x-2">
-                              <button 
-                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowMoreOptions(true);  
-                                }}
-                              >
-                                <MoreHorizontal className="w-5 h-5 text-white/60" />
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      </motion.div>
-                    </AnimatePresence>
-                    ))}
+         <button 
+           className="p-2 hover:bg-white/10 rounded-full transition-colors"
+           onClick={(e) => {
+             e.stopPropagation();
+             setShowMoreOptions(true);  
+           }}
+         >
+           <MoreHorizontal className="w-5 h-5 text-white/60" />
+         </button>
+       </div>
+     </motion.div>
+   </motion.div>
+ </AnimatePresence>
+))}
                   </div>
                   {/* Mini Player */}
 <div className="fixed bottom-0 left-0 right-0 z-50 bg-black py-4">

@@ -1777,7 +1777,10 @@ if (showArtistSelection) {
           ) : searchQuery ? (
             <section>
               <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-              <div className="grid gap-4">
+              <div 
+                className="grid gap-4 h-[calc(100vh-40vh)] overflow-y-auto custom-scrollbar"
+                style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
+              >
                 {searchResults.map((track) => (
                   <TrackItem key={track.id} track={track} />
                 ))}
@@ -1930,8 +1933,10 @@ if (showArtistSelection) {
               {/* Recommended */}
               <section>
                 <h2 className="text-2xl font-bold mb-4">Recommended for you</h2>
-                <div className="grid grid-cols-1 gap-4">
-                  {searchResults.map((track) => (
+                <div 
+                      className="grid grid-cols-1 gap-4 h-[calc(100vh-40vh)] overflow-y-auto custom-scrollbar" 
+                      style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
+                    >                  {searchResults.map((track) => (
                     <TrackItem key={track.id} track={track} />
                   ))}
                 </div>
@@ -1985,6 +1990,7 @@ if (showArtistSelection) {
             currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
             isPlaying={isPlaying}
             removeFromQueue={removeFromQueue}
+            setQueue={setQueue}
             togglePlay={togglePlay}
             skipTrack={skipTrack}
             previousTrack={previousTrack}
