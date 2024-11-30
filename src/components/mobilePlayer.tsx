@@ -33,9 +33,11 @@ interface Track {
   album: {
     title: string;
     cover_medium: string;
+    cover_small: string;
+    cover_big: string;
+    cover_xl: string;
   };
 }
-
 
 interface Lyric {
   time: number;
@@ -56,7 +58,7 @@ interface MobilePlayerProps {
   currentTrack: Track;
   isPlaying: boolean;
   previousTracks: Track[]; // Add this
-  setQueue: (queue: Track[]) => void; // Add this
+  setQueue: React.Dispatch<React.SetStateAction<Track[]>>;
   togglePlay: () => void;
   skipTrack: () => void | Promise<void>;
   previousTrack: () => void;

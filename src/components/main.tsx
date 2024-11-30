@@ -57,11 +57,11 @@ interface Track {
     name: string;
   };
   album: {
-    cover_xl: string;
-    cover_big: string;
-    cover_small: string;
     title: string;
     cover_medium: string;
+    cover_small: string;
+    cover_big: string;
+    cover_xl: string;
   };
 }
 
