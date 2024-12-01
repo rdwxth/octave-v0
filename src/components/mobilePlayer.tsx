@@ -12,17 +12,6 @@ import {
   ListX,
 } from 'lucide-react';
 
-import Vibrant from 'node-vibrant'; // Import library
-
-// Original interfaces
-// interface Artist {
-//   name: string;
-// }
-
-// interface Album {
-//   title: string;
-//   cover_medium: string;
-// }
 
 interface Track {
   id: string;
