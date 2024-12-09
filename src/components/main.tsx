@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 // Desktop (main.tsx)
 'use client';
@@ -14,6 +15,8 @@ import React, {
 } from 'react';
 
 import MobilePlayer from './mobilePlayer';
+import DesktopPlayer from './DesktopPlayer';
+
 
 
 declare global {
@@ -32,23 +35,16 @@ import {
   Clock,
   Cog,
   Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  ChevronUp,
-  ChevronDown,
   Shuffle,
   Plus,
   User,
   Download,
-  Heart,
   Music,
   LogOut,
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
-const API_BASE_URL = 'https://walt-brazil-galleries-robert.trycloudflare.com';
+const API_BASE_URL = 'https://mbck.cloudgen.xyz/';
 
 interface Track {
   id: string;
@@ -2435,96 +2431,35 @@ if (showArtistSelection) {
       </div>
       {/* Desktop Footer */}
       {currentTrack && (
-        <footer className="bg-gradient-to-b from-black to-bg-blue-900 p-4 hidden md:block rounded-lg mx-2 mb-2">
-          <div className="flex items-center justify-between">
-            {/* Now Playing */}
-            <div className="flex items-center space-x-4">
-              <img
-                src={currentTrack.album.cover_medium}
-                alt={currentTrack.title}
-                className="w-14 h-14 rounded-md"
-              />
-              <div>
-                <p className="font-semibold">{currentTrack.title}</p>
-                <p className="text-sm text-gray-400">{currentTrack.artist.name}</p>
-              </div>
-              <button
-                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    toggleLike();
-                  }}
-                >
-                  <Heart className={`w-6 h-6 ${isLiked ? 'text-green-500 fill-current' : 'text-white'}`} />
-            </button>
-            </div>
-            {/* Playback Controls */}
-            <div className="flex flex-col items-center space-y-2 flex-grow mx-4">
-              <div className="flex items-center space-x-4">
-                <Shuffle
-                  className={`w-5 h-5 cursor-pointer ${
-                    shuffleOn ? 'text-green-500' : 'text-gray-400'
-                  }`}
-                  onClick={shuffleQueue}
-                />
-                <SkipBack
-                  className="w-5 h-5 text-gray-400 hover:text-white cursor-pointer"
-                  onClick={previousTrack}
-                />
-                <button className="bg-white rounded-full p-2" onClick={togglePlay}>
-                  {isPlaying ? (
-                    <Pause className="w-6 h-6 text-black" />
-                  ) : (
-                    <Play className="w-6 h-6 text-black" />
-                  )}
-                </button>
-                <SkipForward
-                  className="w-5 h-5 text-gray-400 hover:text-white cursor-pointer"
-                  onClick={skipTrack}
-                />
-                <button onClick={toggleLyricsView}>
-                  <Music
-                    className={`w-5 h-5 ${showLyrics ? 'text-green-500' : 'text-gray-400'}`}
-                  />
-                </button>
-              </div>
-                
-              <div className="w-full flex items-center space-x-2">
-                <span className="text-xs">{formatTime(seekPosition)}</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration}
-                    value={seekPosition}
-                    onChange={handleSeekInputChange} // Use the new handler
-                    className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
-                  />
-                  <span className="text-xs">{formatTime(duration)}</span>
-                </div>
-            </div>
-
-
-            {/* Volume and Queue */}
-            <div className="flex items-center space-x-4">
-              <Volume2 className="w-5 h-5 text-gray-400" />
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleVolumeChange}
-                className="w-24 h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
-              />
-              <button onClick={() => setShowQueue(!showQueue)}>
-                {showQueue ? (
-                  <ChevronDown className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <ChevronUp className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
-        </footer>
+        <footer className="hidden md:block">
+        <DesktopPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          previousTracks={previousTracks}
+          setQueue={setQueue}
+          togglePlay={togglePlay}
+          skipTrack={skipTrack}
+          previousTrack={previousTrack}
+          seekPosition={seekPosition}
+          duration={duration}
+          handleSeek={handleSeek}
+          isLiked={isLiked}
+          repeatMode={repeatMode}
+          setRepeatMode={setRepeatMode}
+          toggleLike={toggleLike}
+          lyrics={lyrics}
+          currentLyricIndex={currentLyricIndex}
+          showLyrics={showLyrics}
+          toggleLyricsView={toggleLyricsView}
+          shuffleOn={shuffleOn}
+          shuffleQueue={shuffleQueue}
+          queue={queue}
+          currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
+          removeFromQueue={removeFromQueue}
+          onQueueItemClick={onQueueItemClick}
+          setIsPlayerOpen={setIsPlayerOpen}
+        />
+      </footer>
       )}
       {/* Modals */}
       {/* Create Playlist Modal */}

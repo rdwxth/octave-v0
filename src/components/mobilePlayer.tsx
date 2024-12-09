@@ -702,6 +702,19 @@ const handleForwardClick = () => {
     }
   };
   
+
+  const controlStyles = `
+  @media (max-width: 375px) {
+    .control-buttons {
+      transform: scale(0.85);
+      gap: 1rem;
+    }
+    
+    .main-controls {
+      padding: 0 0.5rem;
+    }
+  }
+`;
   
   
 
@@ -1120,19 +1133,19 @@ const handleForwardClick = () => {
                 <>
                   {/* Album Art with Blur Background */}
                   {/* Album Art with Blur Background */}
-<div className="relative w-full flex justify-center items-center mb-8">
+<div className="relative w-full h-[min(60vw,320px)] flex justify-center items-center mb-8 flex-shrink-0">
   {/* Background Blur */}
-  <div
-  className="absolute inset-0"
-  style={{
-    backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${currentTrack.album.cover_medium})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    filter: 'blur(20px)',
-    transform: 'scale(1.2)',
-    zIndex: -1,
-  }}
-></div>
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${currentTrack.album.cover_medium})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(20px)',
+          transform: 'scale(1.2)',
+          zIndex: -1,
+        }}
+      ></div>
 
 
   {/* Foreground Album Art */}
