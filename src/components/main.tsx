@@ -772,13 +772,31 @@ export function SpotifyClone() {
     setShuffleOn(!shuffleOn);
   };
 
+  function removeCircularReferences() {
+    const seen = new WeakSet();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return function (key: any, value: WeakKey | null) {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) {
+          return undefined; // Remove circular references
+        }
+        seen.add(value);
+      }
+      return value;
+    };
+  }
+
+
   const addToPlaylist = (track: Track, playlistName: string) => {
     const updatedPlaylists = playlists.map((playlist) =>
       playlist.name === playlistName ? { ...playlist, tracks: [...playlist.tracks, track] } : playlist
     );
     setPlaylists(updatedPlaylists);
-    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-  };
+    localStorage.setItem(
+      'playlists',
+      JSON.stringify(updatedPlaylists, removeCircularReferences())
+    );
+    };
 
   const handleTrackEnd = useCallback(() => {
     if (repeatMode === 'one') {
@@ -886,8 +904,10 @@ useEffect(() => {
       setSelectedTracksForNewPlaylist([]);
       setShowCreatePlaylist(false);
       setShowSearchInPlaylistCreation(false);
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-    }
+      localStorage.setItem(
+        'playlists',
+        JSON.stringify(updatedPlaylists, removeCircularReferences())
+      );    }
   };
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1167,8 +1187,10 @@ useEffect(() => {
     });
 
     setPlaylists(updatedPlaylists);
-    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-    setIsLiked(!isLiked);
+    localStorage.setItem(
+      'playlists',
+      JSON.stringify(updatedPlaylists, removeCircularReferences())
+    );    setIsLiked(!isLiked);
   };
 
   const isTrackLiked = (track: Track) => {
@@ -1199,8 +1221,10 @@ useEffect(() => {
     const updatedPlaylists = playlists.map((p) => (p.name === playlist.name ? updatedPlaylist : p));
 
     setPlaylists(updatedPlaylists);
-    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-    setCurrentPlaylist(updatedPlaylist);
+    localStorage.setItem(
+      'playlists',
+      JSON.stringify(updatedPlaylists, removeCircularReferences())
+    );    setCurrentPlaylist(updatedPlaylist);
   };
 
   const parseLyrics = (lyricsString: string): Lyric[] => {
@@ -1278,8 +1302,10 @@ useEffect(() => {
   const deletePlaylist = (playlist: Playlist) => {
     const updatedPlaylists = playlists.filter((p) => p.name !== playlist.name);
     setPlaylists(updatedPlaylists);
-    localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-  };
+    localStorage.setItem(
+      'playlists',
+      JSON.stringify(updatedPlaylists, removeCircularReferences())
+    );  };
 
 
 
@@ -1337,8 +1363,10 @@ const handleArtistSelectionComplete = async (artists: Artist[]) => {
         { name: 'Liked Songs', image: '/images/liked-songs.webp', tracks: [] }
       ];
       setPlaylists(updatedPlaylists);
-      localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-    }
+      localStorage.setItem(
+        'playlists',
+        JSON.stringify(updatedPlaylists, removeCircularReferences())
+      );    }
   } catch (error) {
     console.error('Error in artist selection completion:', error);
   }
@@ -1822,8 +1850,10 @@ if (showArtistSelection) {
                   const [draggedPlaylist] = updatedPlaylists.splice(draggedPlaylistIndex, 1);
                   updatedPlaylists.splice(targetPlaylistIndex, 0, draggedPlaylist);
                   setPlaylists(updatedPlaylists);
-                  localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
-                  }}
+                  localStorage.setItem(
+                    'playlists',
+                    JSON.stringify(updatedPlaylists, removeCircularReferences())
+                  );                }}
                   onClick={() => openPlaylist(playlist)} // Add this line
                   style={{ userSelect: 'none' }} // Make text unselectable
                   >
@@ -2432,34 +2462,34 @@ if (showArtistSelection) {
       {/* Desktop Footer */}
       {currentTrack && (
         <footer className="hidden md:block">
-        <DesktopPlayer
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
-          previousTracks={previousTracks}
-          setQueue={setQueue}
-          togglePlay={togglePlay}
-          skipTrack={skipTrack}
-          previousTrack={previousTrack}
-          seekPosition={seekPosition}
-          duration={duration}
-          handleSeek={handleSeek}
-          isLiked={isLiked}
-          repeatMode={repeatMode}
-          setRepeatMode={setRepeatMode}
-          toggleLike={toggleLike}
-          lyrics={lyrics}
-          currentLyricIndex={currentLyricIndex}
-          showLyrics={showLyrics}
-          toggleLyricsView={toggleLyricsView}
-          shuffleOn={shuffleOn}
-          shuffleQueue={shuffleQueue}
-          queue={queue}
-          currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
-          removeFromQueue={removeFromQueue}
-          onQueueItemClick={onQueueItemClick}
-          setIsPlayerOpen={setIsPlayerOpen}
-        />
-      </footer>
+          <DesktopPlayer
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            previousTracks={previousTracks}
+            setQueue={setQueue}
+            togglePlay={togglePlay}
+            skipTrack={skipTrack}
+            previousTrack={previousTrack}
+            seekPosition={seekPosition}
+            duration={duration}
+            handleSeek={handleSeek}
+            isLiked={isLiked}
+            repeatMode={repeatMode}
+            setRepeatMode={setRepeatMode}
+            toggleLike={toggleLike}
+            lyrics={lyrics}
+            currentLyricIndex={currentLyricIndex}
+            showLyrics={showLyrics}
+            toggleLyricsView={toggleLyricsView}
+            shuffleOn={shuffleOn}
+            shuffleQueue={shuffleQueue}
+            queue={queue}
+            currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
+            removeFromQueue={removeFromQueue}
+            onQueueItemClick={onQueueItemClick}
+            setIsPlayerOpen={setIsPlayerOpen}
+          />
+        </footer>
       )}
       {/* Modals */}
       {/* Create Playlist Modal */}

@@ -14,7 +14,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fast-average-color": "^9.4.0",
-    "framer-motion": "^11.12.0",
+    "framer-motion": "^11.15.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.441.0",
     "music-app": "file:",
@@ -23,19 +23,20 @@
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
+    "simplebar-react": "^3.3.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "web-bluetooth-utils": "^1.1.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.13",
-    "@types/node": "^20.17.8",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/node": "^20.17.10",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.11",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.15",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"
   }
 }

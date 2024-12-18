@@ -1,13 +1,12 @@
-/* eslint-disable @next/next/no-img-element */
-// DesktopPlayer.tsx
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, MoreHorizontal, ListMusic, Cast, Airplay,
-  Plus, Download, Share2, Library, Radio, UserPlus, Ban, Share, Music,
-  Star, RefreshCw, Flag, AlertCircle, Lock, Mic2, Crown, Settings, ListX, Volume2, Monitor
+  Download, Share2, Library, Radio, UserPlus, Ban, Share, Music, Star, RefreshCw, Flag, AlertCircle, Lock, Mic2, 
+  Crown, Settings, ListX, Volume2, Volume1, VolumeX, Monitor, ChevronDown, Maximize2, X, Plus, Music2, Disc, User, Info
 } from 'lucide-react';
+import SimpleBar from 'simplebar-react';
+import 'simplebar-react/dist/simplebar.min.css';
 
 interface Track {
   id: string;
@@ -55,19 +54,17 @@ interface DesktopPlayerProps {
   shuffleQueue: () => void;
   queue: Track[];
   currentTrackIndex: number;
-  removeFromQueue: (_index: number) => void; // Unused argument prefixed to avoid lint errors
-  onQueueItemClick: (_track: Track, _index: number) => void; // Unused argument prefixed
-  setIsPlayerOpen: (_isOpen: boolean) => void; // Unused argument prefixed
+  removeFromQueue: (_index: number) => void;
+  onQueueItemClick: (track: Track, index: number) => void;
+  setIsPlayerOpen: (_isOpen: boolean) => void;
 }
 
-const formatTimeDesktop = (seconds: number): string => {
-  if (!seconds || isNaN(seconds) || seconds < 0) {
-    return '0:00';
-  }
+function formatTimeDesktop(seconds: number): string {
+  if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
+}
 
 const DesktopSeekbar: React.FC<{
   progress: number;
@@ -79,9 +76,7 @@ const DesktopSeekbar: React.FC<{
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isDragging) {
-      setLocalProgress(progress);
-    }
+    if (!isDragging) setLocalProgress(progress);
   }, [progress, isDragging]);
 
   const calculateProgress = useCallback((clientX: number): number => {
@@ -128,23 +123,28 @@ const DesktopSeekbar: React.FC<{
   }, [isDragging, moveDrag, endDrag]);
 
   return (
-    <div className="flex items-center w-full space-x-2 px-4 max-w-lg mx-auto text-sm">
-      <span className="text-neutral-400 min-w-[40px]">{formatTimeDesktop(localProgress * duration)}</span>
-      <div
+    <div className="flex items-center w-full space-x-3">
+      <span className="text-neutral-400 text-xs min-w-[40px] text-right">
+        {formatTimeDesktop(localProgress * duration)}
+      </span>
+      <div 
         ref={progressRef}
-        className="relative flex-1 h-2 rounded-full bg-neutral-700 cursor-pointer"
-        style={{ height: '6px' }}
+        className="relative flex-1 h-1.5 bg-neutral-700/50 rounded-full cursor-pointer group backdrop-blur-sm"
         onMouseDown={(e) => startDrag(e.clientX)}
         onTouchStart={(e) => startDrag(e.touches[0].clientX)}
       >
-        <motion.div
-          className="absolute left-0 top-0 h-full bg-white rounded-full"
+        <div
+          className="absolute left-0 top-0 h-full bg-white/90 rounded-full group-hover:bg-green-400 transition-colors"
           style={{ width: `${localProgress * 100}%` }}
-          animate={{ width: `${localProgress * 100}%` }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+        <div 
+          className="absolute -top-2 h-5 w-5 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+          style={{ left: `${localProgress * 100}%`, transform: 'translateX(-50%)' }}
         />
       </div>
-      <span className="text-neutral-400 min-w-[40px]">{formatTimeDesktop(duration)}</span>
+      <span className="text-neutral-400 text-xs min-w-[40px]">
+        {formatTimeDesktop(duration)}
+      </span>
     </div>
   );
 };
@@ -169,402 +169,333 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
   shuffleOn,
   shuffleQueue,
   queue,
-  setQueue
+  setQueue,
+  onQueueItemClick
 }) => {
-  const [audioQuality, setAudioQuality] = useState<AudioQuality>('MAX');
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [showAudioMenu, setShowAudioMenu] = useState(false);
-  const [showHoverDetails, setShowHoverDetails] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [volume, setVolume] = useState(1);
-  const [showDevices, setShowDevices] = useState(false);
-  const [showQueueDesktop, setShowQueueDesktop] = useState(false);
-  const [showTabs, setShowTabs] = useState<'album' | 'artist' | 'lyrics' | 'details'>('album');
+  const [isMuted, setIsMuted] = useState(false);
+  const prevVolume = useRef(volume);
+  const [audioQuality, setAudioQuality] = useState<AudioQuality>('HIGH');
+  const [tab, setTab] = useState<'queue' | 'lyrics' | 'details'>('queue');
 
-  const actionIconsColor = 'text-neutral-400 hover:text-white hover:bg-neutral-700 p-2 rounded-full transition-colors';
-  const nextMode = repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off';
+  const TABS = [
+    { id: 'queue', label: 'Queue', icon: ListMusic },
+    { id: 'lyrics', label: 'Lyrics', icon: Music2 },
+    { id: 'details', label: 'Details', icon: Info }
+  ] as const;
 
-  const qualityIcons = {
-    MAX: Crown,
-    HIGH: Star,
-    NORMAL: Settings,
-    DATA_SAVER: RefreshCw,
-  } as const;
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && !sidebar.contains(event.target as Node)) {
+        setShowSidebar(false);
+      }
+    };
 
-  const QualityIcon = qualityIcons[audioQuality];
+    if (showSidebar) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
 
-  const moreOptionsItems = [
-    { icon: Heart, label: 'Like', active: isLiked, onClick: toggleLike },
-    { icon: Ban, label: 'Dislike', onClick: () => {} },
-    { icon: Share2, label: 'Share', onClick: () => {} },
-    { icon: UserPlus, label: 'Follow Artist', onClick: () => {} },
-    { icon: Radio, label: 'Start Radio', onClick: () => {} },
-    { icon: Library, label: 'Add to Playlist', onClick: () => {} },
-    { icon: Share, label: 'Copy Link', onClick: () => {} },
-    { icon: Music, label: 'View Lyrics', active: showLyrics, onClick: toggleLyricsView },
-    { icon: Flag, label: 'Report', onClick: () => {} },
-    { icon: Download, label: 'Download', onClick: () => {} },
-    { icon: Lock, label: 'Audio Quality', onClick: () => setShowAudioMenu(true) },
-    { icon: AlertCircle, label: 'Song Info', onClick: () => {} },
-    { icon: Mic2, label: 'Karaoke Mode', onClick: () => {} },
-  ];
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSidebar]);
+
+  const toggleMute = () => {
+    if (isMuted) {
+      setVolume(prevVolume.current);
+      setIsMuted(false);
+    } else {
+      prevVolume.current = volume;
+      setVolume(0);
+      setIsMuted(true);
+    }
+  };
+
+  const VolumeIcon = () => {
+    if (volume === 0 || isMuted) return <VolumeX />;
+    if (volume < 0.5) return <Volume1 />;
+    return <Volume2 />;
+  };
 
   return (
-    <div className="w-full h-24 bg-gradient-to-t from-black to-neutral-900 border-t border-neutral-700 flex items-center justify-between px-4 relative">
-      {/* LEFT SECTION */}
-      <div className="flex items-center space-x-3 relative">
-        {currentTrack && (
-          <div
-            className="relative w-14 h-14 rounded-md overflow-hidden cursor-pointer"
-            onMouseEnter={() => setShowHoverDetails(true)}
-            onMouseLeave={() => setShowHoverDetails(false)}
-          >
-            <img
-              src={currentTrack.album.cover_medium}
-              alt={currentTrack.title}
-              width={56}
-              height={56}
-              className="object-cover w-full h-full"
-            />
-            <AnimatePresence>
-              {showHoverDetails && (
-                <motion.div
-                  className="absolute top-0 left-full transform -translate-x-2 bg-neutral-900/90 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-2xl p-6 w-72 max-h-96 overflow-y-auto z-50"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
+    <>
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-black/60 to-black/90 backdrop-blur-lg border-t border-white/10">
+        <div className="max-w-screen-2xl mx-auto px-4">
+          <DesktopSeekbar 
+            progress={duration > 0 ? seekPosition / duration : 0}
+            handleSeek={handleSeek}
+            duration={duration}
+          />
+          <div className="h-20 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
+              {currentTrack && (
+                <>
+                  <div className="relative group">
+                    <img 
+                      src={currentTrack.album.cover_medium}
+                      alt={currentTrack.title}
+                      className="w-14 h-14 rounded-md object-cover"
+                    />
+                    <button 
+                      onClick={() => setShowSidebar(true)}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    >
+                      <Maximize2 className="w-6 h-6 text-white" />
+                    </button>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-white font-medium truncate">{currentTrack.title}</h3>
+                    <p className="text-neutral-400 text-sm truncate">{currentTrack.artist.name}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={toggleLike}
+                      className={`p-2 rounded-full hover:bg-white/10 ${isLiked ? 'text-green-400' : 'text-neutral-400'}`}
+                    >
+                      <Heart className="w-5 h-5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={shuffleQueue}
+                  className={`p-2 rounded-full hover:bg-white/10 ${
+                    shuffleOn ? 'text-green-400' : 'text-neutral-400'
+                  }`}
                 >
-                  <div className="text-white font-semibold mb-3 text-sm">{currentTrack.album.title}</div>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {['album','artist','lyrics','details'].map((tab) => (
+                  <Shuffle className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={previousTrack}
+                  className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+                >
+                  <SkipBack className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={togglePlay}
+                  className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-5 h-5 text-black" />
+                  ) : (
+                    <Play className="w-5 h-5 text-black translate-x-0.5" />
+                  )}
+                </button>
+                <button
+                  onClick={skipTrack} 
+                  className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+                >
+                  <SkipForward className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setRepeatMode(repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off')}
+                  className={`p-2 rounded-full hover:bg-white/10 ${
+                    repeatMode !== 'off' ? 'text-green-400' : 'text-neutral-400'
+                  }`}  
+                >
+                  {repeatMode === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-1 justify-end">
+              <button 
+                onClick={() => {
+                  setShowSidebar(true);
+                  setTab('lyrics');
+                }} 
+                className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+              >
+                <Music className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => {
+                  setShowSidebar(true);
+                  setTab('queue');
+                }} 
+                className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+              >
+                <ListMusic className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2 min-w-[140px]">
+                <button
+                  onClick={toggleMute}
+                  className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+                >
+                  <VolumeIcon />
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => {
+                    const newVolume = parseFloat(e.target.value);
+                    setVolume(newVolume);
+                    setIsMuted(newVolume === 0);
+                  }}
+                  className="w-full accent-white"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showSidebar && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/60 z-50"
+          >
+            <motion.div
+              id="sidebar"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 40, stiffness: 400 }}
+              className="absolute right-0 top-0 bottom-0 w-full max-w-[500px] bg-neutral-900 border-l border-white/10"
+            >
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                  <div className="flex items-center gap-4">
+                    {TABS.map((t) => (
                       <button
-                        key={tab}
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          showTabs === tab ? 'bg-white/20 text-white' : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                        key={t.id}
+                        onClick={() => setTab(t.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+                          t.id === tab ? 'bg-white/20 text-white' : 'text-neutral-400 hover:text-white'
                         }`}
-                        onClick={() => setShowTabs(tab as typeof showTabs)}
                       >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        <t.icon className="w-5 h-5" />
+                        {t.label}
                       </button>
                     ))}
                   </div>
-                  <div className="text-neutral-300 text-sm space-y-2 leading-relaxed">
-                    {showTabs === 'album' && (
-                      <p>A captivating album that blends genres and showcases a unique artistic vision. (Placeholder)</p>
-                    )}
-                    {showTabs === 'artist' && (
-                      <p>An artist celebrated worldwide, known for innovation and musical excellence. (Placeholder)</p>
-                    )}
-                    {showTabs === 'lyrics' && (
-                      <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-2">
-                        {lyrics.map((lyric, index) => (
-                          <p
-                            key={index}
-                            className={`cursor-pointer ${
-                              index === currentLyricIndex ? 'text-white font-bold' : 'text-neutral-400'
-                            }`}
-                            onClick={() => handleSeek(lyric.time)}
+                  <button
+                    onClick={() => setShowSidebar(false)}
+                    className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-hidden">
+                  <SimpleBar style={{ maxHeight: '100%' }} className="h-full">
+                    {tab === 'queue' && (
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">Queue</h3>
+                          <button
+                            onClick={() => setQueue([])}
+                            className="text-sm text-neutral-400 hover:text-white"
                           >
-                            {lyric.text}
-                          </p>
-                        ))}
+                            Clear
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {queue.map((track, index) => (
+                            <div
+                              key={`${track.id}-${index}`}
+                              onClick={() => onQueueItemClick(track, index)}
+                              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer ${
+                                currentTrack?.id === track.id ? 'bg-white/10' : 'hover:bg-white/5'
+                              }`}
+                            >
+                              <img
+                                src={track.album.cover_small}
+                                alt={track.title}
+                                className="w-10 h-10 rounded object-cover"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white truncate">{track.title}</p>
+                                <p className="text-sm text-neutral-400 truncate">
+                                  {track.artist.name}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    {showTabs === 'details' && (
-                      <p>Additional details: Genre, BPM, release year, and more background info. (Placeholder)</p>
+                    {tab === 'lyrics' && (
+                      <div className="p-4">
+                        {lyrics.length > 0 ? (
+                          <div className="space-y-4">
+                            {lyrics.map((lyric, index) => (
+                              <p
+                                key={index}
+                                onClick={() => handleSeek(lyric.time)}
+                                className={`text-lg cursor-pointer transition-colors ${
+                                  index === currentLyricIndex
+                                    ? 'text-white font-medium'
+                                    : 'text-neutral-400 hover:text-white'
+                                }`}
+                              >
+                                {lyric.text}
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-neutral-400 text-center">No lyrics available</p>
+                        )}
+                      </div>
                     )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
-        {currentTrack && (
-          <div className="flex flex-col min-w-0">
-            <p className="font-semibold text-white truncate max-w-[150px]">{currentTrack.title}</p>
-            <p className="text-sm text-neutral-400 truncate max-w-[150px]">{currentTrack.artist.name}</p>
-          </div>
-        )}
-        {currentTrack && (
-          <div className="flex items-center space-x-2">
-            <button className={actionIconsColor} onClick={toggleLike}>
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-pink-500 text-pink-500' : ''}`} />
-            </button>
-            <button className={actionIconsColor}>
-              <Share2 className="w-5 h-5" />
-            </button>
-            <button className={actionIconsColor}>
-              <Plus className="w-5 h-5" />
-            </button>
-            <button className={actionIconsColor}>
-              <Download className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* CENTER SECTION */}
-      <div className="flex flex-col items-center justify-center space-y-3">
-        <div className="flex items-center space-x-4">
-          <button
-            className={`p-2 rounded-full transition-colors ${shuffleOn ? 'text-green-500 bg-neutral-700' : 'text-neutral-400 hover:text-white hover:bg-neutral-700'}`}
-            onClick={shuffleQueue}
-          >
-            <Shuffle className="w-5 h-5" />
-          </button>
-          <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors" onClick={() => previousTrack()}>
-            <SkipBack className="w-5 h-5 text-white" />
-          </button>
-          <motion.button
-            className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-neutral-100 transition-colors"
-            whileTap={{ scale: 0.95 }}
-            onClick={togglePlay}
-          >
-            {isPlaying ? (
-              <Pause className="w-5 h-5 text-black" />
-            ) : (
-              <Play className="w-5 h-5 text-black ml-0.5" />
-            )}
-          </motion.button>
-          <button className="p-2 hover:bg-neutral-700 rounded-full transition-colors" onClick={() => skipTrack()}>
-            <SkipForward className="w-5 h-5 text-white" />
-          </button>
-          <button
-            onClick={() => setRepeatMode(nextMode)}
-            className="p-2 hover:bg-neutral-700 rounded-full transition-colors"
-          >
-            {repeatMode === 'one' ? (
-              <Repeat1 className="w-5 h-5 text-green-500" />
-            ) : (
-              <Repeat className={`w-5 h-5 ${repeatMode === 'all' ? 'text-green-500' : 'text-neutral-400'}`} />
-            )}
-          </button>
-        </div>
-        <DesktopSeekbar
-          progress={duration > 0 ? seekPosition / duration : 0}
-          handleSeek={handleSeek}
-          duration={duration}
-        />
-      </div>
-
-      {/* RIGHT SECTION */}
-      <div className="flex items-center space-x-2">
-        <button className={actionIconsColor} onClick={() => setShowMoreOptions(true)}>
-          <MoreHorizontal className="w-5 h-5" />
-        </button>
-        <button className={actionIconsColor} onClick={() => setShowQueueDesktop(!showQueueDesktop)}>
-          <ListMusic className="w-5 h-5" />
-        </button>
-        <button className={actionIconsColor}>
-          <Airplay className="w-5 h-5" />
-        </button>
-        <button className={actionIconsColor}>
-          <Cast className="w-5 h-5" />
-        </button>
-        <button
-          className="px-3 py-1 rounded-full text-xs font-medium inline-flex items-center justify-center space-x-1.5 bg-neutral-700 text-neutral-200 hover:bg-neutral-600 transition-colors"
-          onClick={() => setShowAudioMenu(true)}
-        >
-          <QualityIcon className="w-4 h-4" />
-          <span>{audioQuality}</span>
-        </button>
-        <div className="relative">
-          <button
-            className={actionIconsColor}
-            onClick={() => setShowDevices(!showDevices)}
-          >
-            <Monitor className="w-5 h-5" />
-          </button>
-          <AnimatePresence>
-            {showDevices && (
-              <motion.div
-                className="absolute right-0 bottom-10 bg-neutral-900/90 backdrop-blur-md border border-neutral-700 rounded-xl shadow-2xl p-6 w-64"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-              >
-                <p className="text-white font-bold mb-3 text-sm">Devices</p>
-                <div className="flex items-center justify-between text-sm text-neutral-300 hover:text-white hover:bg-neutral-700 p-2 rounded-md cursor-pointer mb-2">
-                  <span>Desktop Speaker</span>
-                  <Volume2 className="w-4 h-4" />
+                    {tab === 'details' && currentTrack && (
+                      <div className="p-4 space-y-6">
+                        <div>
+                          <img
+                            src={currentTrack.album.cover_xl}
+                            alt={currentTrack.title}
+                            className="w-full aspect-square rounded-lg object-cover"
+                          />
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <h2 className="text-2xl font-bold text-white">{currentTrack.title}</h2>
+                            <p className="text-neutral-400">{currentTrack.artist.name}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button className="flex-1 py-2.5 px-4 rounded-full bg-white text-black font-medium hover:bg-neutral-200 transition-colors">
+                              Add to Playlist
+                            </button>
+                            <button className="p-2.5 rounded-full border border-white/20 hover:bg-white/10 transition-colors">
+                              <Share2 className="w-5 h-5 text-white" />
+                            </button>
+                          </div>
+                          <div className="pt-4 border-t border-white/10">
+                            <h3 className="text-white font-medium mb-2">About</h3>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-neutral-400">
+                                Album • {currentTrack.album.title}
+                              </p>
+                              <p className="text-neutral-400">
+                                Duration • {formatTimeDesktop(duration)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </SimpleBar>
                 </div>
-                <div className="flex items-center justify-between text-sm text-neutral-300 hover:text-white hover:bg-neutral-700 p-2 rounded-md cursor-pointer mb-2">
-                  <span>Living Room TV</span>
-                  <Volume2 className="w-4 h-4" />
-                </div>
-                <div className="flex items-center justify-between text-sm text-neutral-300 hover:text-white hover:bg-neutral-700 p-2 rounded-md cursor-pointer">
-                  <span>Phone</span>
-                  <Volume2 className="w-4 h-4" />
-                </div>
-                <div className="mt-4">
-                  <p className="text-neutral-400 text-xs mb-2">Volume</p>
-                  <div className="flex items-center space-x-2">
-                    <Volume2 className="w-4 h-4 text-neutral-300" />
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={volume}
-                      onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-full h-1 bg-neutral-600 rounded-full appearance-none cursor-pointer"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* More Options Modal */}
-      <AnimatePresence>
-        {showMoreOptions && (
-          <motion.div
-            className="fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowMoreOptions(false)}
-          >
-            <motion.div
-              className="bg-neutral-900/95 rounded-xl p-6 w-[340px] max-h-[80vh] overflow-y-auto shadow-2xl"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-xl font-bold text-white mb-4">More Options</h3>
-              <div className="space-y-3 text-sm">
-                {moreOptionsItems.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center space-x-2 hover:bg-neutral-700 p-2 rounded cursor-pointer"
-                    onClick={() => {
-                      item.onClick?.();
-                      setShowMoreOptions(false);
-                    }}
-                  >
-                    <item.icon className={`w-5 h-5 ${item.active ? 'fill-pink-500 text-pink-500' : 'text-neutral-400'}`} />
-                    <span className="text-neutral-300">{item.label}</span>
-                  </div>
-                ))}
               </div>
-              <button
-                className="w-full py-2 mt-6 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors"
-                onClick={() => setShowMoreOptions(false)}
-              >
-                Close
-              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Audio Quality Menu */}
-      <AnimatePresence>
-        {showAudioMenu && (
-          <motion.div
-            className="fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowAudioMenu(false)}
-          >
-            <motion.div
-              className="bg-neutral-900/95 rounded-xl p-6 w-[340px] shadow-2xl"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-xl font-bold text-white mb-4">Audio Quality</h3>
-              {(['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'] as AudioQuality[]).map((quality) => {
-                const QIcon = qualityIcons[quality];
-                return (
-                  <button
-                    key={quality}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg mb-2 ${
-                      audioQuality === quality ? 'bg-neutral-700' : 'hover:bg-neutral-700/50'
-                    }`}
-                    onClick={() => {
-                      setAudioQuality(quality);
-                      setShowAudioMenu(false);
-                    }}
-                  >
-                    <div className="flex flex-col text-left">
-                      <p className="text-white font-medium">{quality}</p>
-                      <p className="text-sm text-neutral-400">
-                        {quality === 'MAX' && 'HiFi Plus (24-bit, up to 192kHz)'}
-                        {quality === 'HIGH' && 'HiFi (16-bit, 44.1kHz)'}
-                        {quality === 'NORMAL' && 'High Quality (320kbps AAC)'}
-                        {quality === 'DATA_SAVER' && 'Data Saver (128kbps AAC)'}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2 text-neutral-300">
-                      <QIcon className="w-4 h-4" />
-                      {audioQuality === quality && (
-                        <div className="w-3 h-3 rounded-full bg-green-500" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-              <button
-                className="w-full py-2 mt-4 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded transition-colors"
-                onClick={() => setShowAudioMenu(false)}
-              >
-                Close
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Queue Panel */}
-      <AnimatePresence>
-        {showQueueDesktop && (
-          <motion.div
-            className="fixed bottom-24 right-4 w-80 bg-neutral-900/90 backdrop-blur-lg border border-neutral-700 rounded-xl p-4 z-50 max-h-[50vh] overflow-y-auto custom-scrollbar"
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-white font-semibold text-sm">Up Next</h2>
-              <button
-                onClick={() => setQueue([])}
-                className="text-neutral-300 hover:text-white text-xs flex items-center space-x-1 px-2 py-1 rounded-full hover:bg-neutral-700 transition-colors"
-              >
-                <ListX className="w-4 h-4" />
-                <span>Clear</span>
-              </button>
-            </div>
-            <div className="space-y-2 text-sm">
-              {queue.map((track, index) => (
-                <div
-                  key={`queue-${track.id}-${index}`}
-                  className={`flex items-center space-x-2 p-2 rounded-lg ${
-                    currentTrack && track.id === currentTrack.id ? 'bg-neutral-700' : 'hover:bg-neutral-700'
-                  } cursor-pointer`}
-                >
-                  <img
-                    src={track.album.cover_small}
-                    alt={track.title}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 rounded"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white truncate">{track.title}</p>
-                    <p className="text-xs text-neutral-400 truncate">{track.artist.name}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    </>
   );
 };
 
