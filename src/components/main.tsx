@@ -1763,28 +1763,11 @@ if (showArtistSelection) {
           </ul>
         </nav>
         <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-[calc(4rem+2rem+env(safe-area-inset-bottom))]">
-        {showLyrics ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <h2 className="text-2xl font-bold mb-4">{currentTrack?.title}</h2>
-              <p className="text-lg mb-8">{currentTrack?.artist.name}</p>
-              <div className="text-center" ref={lyricsRef}>
-                {lyrics.map((lyric, index) => (
-                  <p
-                    key={index}
-                    className={`text-lg ${
-                      index === currentLyricIndex ? 'text-green-500 font-bold' : 'text-gray-400'
-                    }`}
-                  >
-                    {lyric.text}
-                  </p>
-                ))}
-              </div>
-            </div>
-          ) : view === 'playlist' && currentPlaylist ? (
+        {view === 'playlist' && currentPlaylist ? (
             <section>
               {/* Playlist Header */}
               <div className="relative h-64 mb-4">
-                <img
+                <img 
                   src={currentPlaylist.image}
                   alt={currentPlaylist.name}
                   className="w-full h-full object-cover rounded-lg"
