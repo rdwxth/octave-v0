@@ -2,10 +2,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Heart, Play, Pause, Share2, Volume2, Volume1, VolumeX, Music, Music2, Info, Maximize2, X, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, 
-  MoreHorizontal, Cast, Airplay,
-  Download,  Library, Radio, UserPlus, Ban, Share, Star, Flag, AlertCircle, Lock, Mic2, 
-  Crown, Fan, CircleDollarSign, ListX, Monitor, ChevronDown, Plus,  Disc, User 
+  Heart, Play, Pause, Volume2, Volume1, VolumeX, Music2, Info, Maximize2, X, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic,
+  Cast, Airplay, Download, Library, Radio, UserPlus, Ban, Share, Star, Flag, AlertCircle, Lock, Mic2,
+  Crown, Fan, CircleDollarSign, ListX, Plus, Disc, User
 } from 'lucide-react';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
@@ -125,7 +124,7 @@ const DesktopSeekbar: React.FC<{
   }, [isDragging, moveDrag, endDrag]);
 
   return (
-    <div className="flex items-center w-full space-x-3">
+    <div className="flex items-center w-full space-x-3 px-4 py-2">
       <span className="text-neutral-400 text-xs min-w-[40px] text-right">
         {formatTimeDesktop(localProgress * duration)}
       </span>
@@ -151,7 +150,7 @@ const DesktopSeekbar: React.FC<{
   );
 };
 
-const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
+export default function DesktopPlayer({
   currentTrack,
   isPlaying,
   togglePlay,
@@ -170,21 +169,34 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
   shuffleQueue,
   queue,
   setQueue,
-  onQueueItemClick
-}) => {
+  onQueueItemClick,
+  showLyrics,
+  toggleLyricsView,
+}: DesktopPlayerProps) {
   const [showSidebar, setShowSidebar] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const prevVolume = useRef(volume);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('HIGH');
   const [tab, setTab] = useState<'queue' | 'lyrics' | 'details'>('queue');
+  const [userScrollingLyrics, setUserScrollingLyrics] = useState(false);
+  const userScrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+
+  const lyricsRef = useRef<HTMLDivElement>(null);
 
   const TABS = [
     { id: 'queue', label: 'Queue', icon: ListMusic },
     { id: 'lyrics', label: 'Lyrics', icon: Music2 },
     { id: 'details', label: 'Details', icon: Info }
   ] as const;
+
+  const audioQualityIcons = {
+    MAX: { icon: Crown, color: 'bg-gradient-to-r from-yellow-600 to-yellow-800', desc: 'HiFi Plus Quality (24-bit, up to 192kHz)' },
+    HIGH: { icon: Star, color: 'bg-gradient-to-r from-purple-500 to-purple-700', desc: 'HiFi Quality (16-bit, 44.1kHz)' },
+    NORMAL: { icon: Fan, color: 'bg-gradient-to-r from-blue-500 to-blue-700', desc: 'High Quality (320kbps AAC)' },
+    DATA_SAVER: { icon: CircleDollarSign, color: 'bg-gradient-to-r from-green-500 to-green-700', desc: 'Data Saver (128kbps AAC)' },
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -193,25 +205,29 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
         setShowSidebar(false);
       }
     };
-
     if (showSidebar) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showSidebar]);
 
   const toggleMute = () => {
-    if (isMuted) {
-      setVolume(prevVolume.current);
-      setIsMuted(false);
-    } else {
-      prevVolume.current = volume;
-      setVolume(0);
-      setIsMuted(true);
-    }
+    setIsMuted((prev) => {
+      if (prev) {
+        setVolume(prevVolume.current || 1); // Restore previous volume
+      } else {
+        prevVolume.current = volume; // Save current volume before muting
+        setVolume(0);
+      }
+      return !prev;
+    });
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
   };
 
   const VolumeIcon = () => {
@@ -220,15 +236,65 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
     return <Volume2 />;
   };
 
+  const cycleAudioQuality = () => {
+    const order: AudioQuality[] = ['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'];
+    const currentIndex = order.indexOf(audioQuality);
+    const nextIndex = (currentIndex + 1) % order.length;
+    setAudioQuality(order[nextIndex]);
+  };
+
+  const enterFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        // No-op
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        // No-op
+      });
+    }
+  };
+
+  const scrollToCurrentLyric = useCallback(() => {
+    if (lyricsRef.current && currentLyricIndex >= 0) {
+      const container = lyricsRef.current;
+      const currentLyricElement = container.children[currentLyricIndex] as HTMLElement;
+      if (currentLyricElement && !userScrollingLyrics) {
+        const elementOffset = currentLyricElement.offsetTop;
+        const containerHeight = container.clientHeight;
+        const scrollPosition = elementOffset - containerHeight / 2;
+        container.scrollTo({ top: scrollPosition > 0 ? scrollPosition : 0, behavior: 'smooth' });
+      }
+    }
+  }, [currentLyricIndex, userScrollingLyrics]);
+  
+
+  useEffect(() => {
+    if (tab === 'lyrics') {
+      scrollToCurrentLyric();
+    }
+  }, [currentLyricIndex, tab, scrollToCurrentLyric]);
+
+  // Handle user scroll - if user doesn't scroll for 1-2 seconds, auto scroll
+  const handleLyricsScroll = () => {
+    setUserScrollingLyrics(true);
+    if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
+    userScrollTimeout.current = setTimeout(() => {
+      setUserScrollingLyrics(false);
+      scrollToCurrentLyric();
+    }, 1500);
+  };
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-black/60 to-black/90 backdrop-blur-lg border-t border-white/10">
         <div className="max-w-screen-2xl mx-auto px-4">
-          <DesktopSeekbar 
+          <DesktopSeekbar
             progress={duration > 0 ? seekPosition / duration : 0}
             handleSeek={handleSeek}
             duration={duration}
           />
+
           <div className="h-20 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0 flex-1">
               {currentTrack && (
@@ -240,10 +306,13 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                       className="w-14 h-14 rounded-md object-cover"
                     />
                     <button 
-                      onClick={() => setShowSidebar(true)}
+                      onClick={() => {
+                        setShowSidebar(true);
+                        setTab('details');
+                      }}
                       className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                     >
-                      <Maximize2 className="w-6 h-6 text-white" />
+                      <Info className="w-6 h-6 text-white" />
                     </button>
                   </div>
                   <div className="min-w-0">
@@ -256,6 +325,15 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                       className={`p-2 rounded-full hover:bg-white/10 ${isLiked ? 'text-green-400' : 'text-neutral-400'}`}
                     >
                       <Heart className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={enterFullScreen}
+                      className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+                    >
+                      <Maximize2 className="w-5 h-5" />
+                    </button>
+                    <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                      <Download className="w-5 h-5" />
                     </button>
                   </div>
                 </>
@@ -298,7 +376,7 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                   onClick={() => setRepeatMode(repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off')}
                   className={`p-2 rounded-full hover:bg-white/10 ${
                     repeatMode !== 'off' ? 'text-green-400' : 'text-neutral-400'
-                  }`}  
+                  }`}
                 >
                   {repeatMode === 'one' ? <Repeat1 className="w-5 h-5" /> : <Repeat className="w-5 h-5" />}
                 </button>
@@ -313,7 +391,7 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                 }} 
                 className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
               >
-                <Music className="w-5 h-5" />
+                <Music2 className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => {
@@ -324,6 +402,16 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
               >
                 <ListMusic className="w-5 h-5" />
               </button>
+
+              {/* Audio Quality Button */}
+              <button
+                onClick={cycleAudioQuality}
+                className="p-2 rounded-full hover:bg-white/10 text-white flex items-center justify-center"
+              >
+                {React.createElement(audioQualityIcons[audioQuality].icon, {className: 'w-5 h-5'})}
+              </button>
+
+              {/* Volume */}
               <div className="flex items-center gap-2 min-w-[140px]">
                 <button
                   onClick={toggleMute}
@@ -337,13 +425,10 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                   max="1"
                   step="0.01"
                   value={isMuted ? 0 : volume}
-                  onChange={(e) => {
-                    const newVolume = parseFloat(e.target.value);
-                    setVolume(newVolume);
-                    setIsMuted(newVolume === 0);
-                  }}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
                   className="w-full accent-white"
                 />
+
               </div>
             </div>
           </div>
@@ -430,7 +515,11 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                       </div>
                     )}
                     {tab === 'lyrics' && (
-                      <div className="p-4">
+                      <div 
+                        className="p-4 h-full overflow-y-auto"
+                        ref={lyricsRef}
+                        onScroll={handleLyricsScroll}
+                      >
                         {lyrics.length > 0 ? (
                           <div className="space-y-4">
                             {lyrics.map((lyric, index) => (
@@ -472,7 +561,7 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                               Add to Playlist
                             </button>
                             <button className="p-2.5 rounded-full border border-white/20 hover:bg-white/10 transition-colors">
-                              <Share2 className="w-5 h-5 text-white" />
+                              <Share className="w-5 h-5 text-white" />
                             </button>
                           </div>
                           <div className="pt-4 border-t border-white/10">
@@ -486,6 +575,100 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
                               </p>
                             </div>
                           </div>
+
+                          {/* Additional icons section */}
+                          <div className="pt-4 border-t border-white/10">
+                            <h3 className="text-white font-medium mb-2">Actions</h3>
+                            <div className="flex flex-wrap gap-2">
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Download className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Library className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Radio className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <UserPlus className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Ban className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Star className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Flag className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <AlertCircle className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Lock className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Mic2 className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Plus className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Disc className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <User className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <ListX className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Cast className="w-5 h-5" />
+                              </button>
+                              <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
+                                <Airplay className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Volume control in details tab as well */}
+                          <div className="pt-4 border-t border-white/10">
+                            <h3 className="text-white font-medium mb-2">Volume</h3>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={toggleMute}
+                                className="p-2 rounded-full hover:bg-white/10 text-neutral-400"
+                              >
+                                {isMuted ? <VolumeX /> : volume === 0 ? <VolumeX /> : volume < 0.5 ? <Volume1 /> : <Volume2 />}
+                              </button>
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={isMuted ? 0 : volume}
+                                onChange={(e) => {
+                                  const newVolume = parseFloat(e.target.value);
+                                  setVolume(newVolume);
+                                  setIsMuted(newVolume === 0);
+                                }}
+                                className="w-full accent-white"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Audio Quality Info */}
+                          <div className="pt-4 border-t border-white/10">
+                            <h3 className="text-white font-medium mb-2">Audio Quality</h3>
+                            <button 
+                              onClick={cycleAudioQuality}
+                              className={`inline-flex items-center space-x-2 px-4 py-1 rounded-full text-xs font-medium ${audioQualityIcons[audioQuality].color} text-white`}
+                            >
+                              {React.createElement(audioQualityIcons[audioQuality].icon, {className: 'w-4 h-4'})}
+                              <span>{audioQuality}</span>
+                            </button>
+                            <p className="text-sm text-neutral-400 mt-2">{audioQualityIcons[audioQuality].desc}</p>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -498,6 +681,4 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
       </AnimatePresence>
     </>
   );
-};
-
-export default DesktopPlayer;
+}

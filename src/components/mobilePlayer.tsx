@@ -957,30 +957,39 @@ const handleForwardClick = () => {
 
                   
                   <div className="space-y-4">
-                    {/* Previous tracks - greyed out */}
-                    {previousTracks.map((track, index) => (
-                      <motion.div
-                        key={`prev-${track.id}-${index}`}
-                        className="flex items-center space-x-4 p-2 rounded-lg hover:bg-white/10 opacity-50" // Added opacity-50
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onQueueItemClick(track, -1 * (index + 1))}
-                      >
-                        <div className="w-12 h-12 relative rounded-lg overflow-hidden">
-                          <img
-                            src={track.album.cover_medium}
-                            alt={track.title}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-medium truncate">{track.title}</p>
-                          <p className="text-white/60 text-sm truncate">{track.artist.name}</p>
-                        </div>
-                        <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                          <MoreHorizontal className="w-5 h-5 text-white/60" />
-                        </button>
-                      </motion.div>
-                    ))}
+                    {/* Previous tracks - slightly greyed out */}
+{previousTracks.map((track, index) => (
+  <motion.div
+    key={`prev-${track.id}-${index}`}
+    className="flex items-center space-x-4 p-2 rounded-lg opacity-50 hover:opacity-70 transition-opacity cursor-pointer"
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => onQueueItemClick(track, -1 * (index + 1))} // Handle click
+  >
+    {/* Album Cover */}
+    <div className="w-12 h-12 rounded-lg overflow-hidden">
+      <img
+        src={track.album.cover_medium}
+        alt={track.title}
+        className="object-cover"
+      />
+    </div>
+
+    {/* Track Info */}
+    <div className="flex-1 min-w-0">
+      <p className="text-gray-400 font-medium truncate">{track.title}</p>
+      <p className="text-gray-500 text-sm truncate">{track.artist.name}</p>
+    </div>
+
+    {/* Action Icon */}
+    <button className="p-2 rounded-full">
+      <MoreHorizontal className="w-5 h-5 text-gray-500" />
+    </button>
+  </motion.div>
+))}
+
+
+
 
                     {/* Current and upcoming tracks */}
                     {queue.map((track, index) => (

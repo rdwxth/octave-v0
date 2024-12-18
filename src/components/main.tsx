@@ -1154,7 +1154,7 @@ useEffect(() => {
     const db = await openDatabase();
     const transaction = db.transaction('tracks', 'readonly');
     const store = transaction.objectStore('tracks');
-    console.log(store);
+    // console.log(store);
     const request = store.get(trackId);
 
     return new Promise((resolve, reject) => {
