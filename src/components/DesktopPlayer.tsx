@@ -1,9 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Heart, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, MoreHorizontal, ListMusic, Cast, Airplay,
-  Download, Share2, Library, Radio, UserPlus, Ban, Share, Music, Star, RefreshCw, Flag, AlertCircle, Lock, Mic2, 
-  Crown, Settings, ListX, Volume2, Volume1, VolumeX, Monitor, ChevronDown, Maximize2, X, Plus, Music2, Disc, User, Info
+  Heart, Play, Pause, Share2, Volume2, Volume1, VolumeX, Music, Music2, Info, Maximize2, X, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic, 
+  MoreHorizontal, Cast, Airplay,
+  Download,  Library, Radio, UserPlus, Ban, Share, Star, Flag, AlertCircle, Lock, Mic2, 
+  Crown, Fan, CircleDollarSign, ListX, Monitor, ChevronDown, Plus,  Disc, User 
 } from 'lucide-react';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
@@ -162,8 +164,6 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
   toggleLike,
   lyrics,
   currentLyricIndex,
-  showLyrics,
-  toggleLyricsView,
   repeatMode,
   setRepeatMode,
   shuffleOn,
@@ -176,6 +176,7 @@ const DesktopPlayer: React.FC<DesktopPlayerProps> = ({
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const prevVolume = useRef(volume);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('HIGH');
   const [tab, setTab] = useState<'queue' | 'lyrics' | 'details'>('queue');
 

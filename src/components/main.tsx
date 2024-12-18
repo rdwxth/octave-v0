@@ -17,6 +17,9 @@ import React, {
 import MobilePlayer from './mobilePlayer';
 import DesktopPlayer from './DesktopPlayer';
 
+import { motion } from 'framer-motion';
+
+
 
 
 declare global {
@@ -265,42 +268,42 @@ export function SpotifyClone() {
   
   
   const previousTrack = useCallback(() => {
-    if (previousTracks.length > 0) {
-      const [prevTrack, ...restPreviousTracks] = previousTracks;
-      setCurrentTrack(prevTrack);
-      updateQueue(currentTrack!); // Ensure queue stays consistent
-      setPreviousTracks(restPreviousTracks);
-      setIsPlaying(true); // Keep playing the previous track
-    }
-  }, [currentTrack, previousTracks]);
+    setPreviousTracks((prev) => {
+      if (prev.length === 0) return prev;
+  
+      const [lastTrack, ...rest] = prev;
+      setCurrentTrack(lastTrack);
+  
+      // When adding the currentTrack to the front, remove duplicates first:
+      setQueue((prevQueue) => {
+        const filtered = prevQueue.filter((t) => t.id !== lastTrack.id);
+        return [lastTrack, ...filtered];
+      });
+  
+      return rest;
+    });
+  }, []);
+  
+  
 
   
-  const skipTrack = useCallback(async () => {
-    if (currentTrack) {
-      setPreviousTracks((prev) => [currentTrack, ...prev.slice(0, 49)]);
-    }
-    
-    if (queue.length > 1) {
-      const [, ...newQueue] = queue;
-      setCurrentTrack(newQueue[0]);
-      setQueue(newQueue);
-      setIsPlaying(true); // Ensure playing state is maintained
-    } else {
-      const savedQueue = JSON.parse(localStorage.getItem('queue') || '[]');
-      if (savedQueue.length > 1) {
-        const [, ...newQueue] = savedQueue;
-        setCurrentTrack(newQueue[0]);
-        setQueue(newQueue);
-        setIsPlaying(true); // Ensure playing state is maintained
-      } else {
-        const mostPlayedArtists = getMostPlayedArtists();
-        const randomSongs = await fetchRandomSongs(mostPlayedArtists);
-        setQueue(randomSongs);
-        setCurrentTrack(randomSongs[0]);
-        setIsPlaying(true); // Ensure playing state is maintained
-      }
-    }
-  }, [currentTrack, queue]);
+  const skipTrack = useCallback(() => {
+    setPreviousTracks((prev) => {
+      // Add current track to the top of the previousTracks stack
+      if (currentTrack) return [currentTrack, ...prev];
+      return prev;
+    });
+  
+    // Move to the next track in the queue
+    setQueue((prevQueue) => {
+      if (prevQueue.length <= 1) return prevQueue; // No further tracks
+  
+      const [, ...newQueue] = prevQueue; // Remove the first track
+      setCurrentTrack(newQueue[0]); // Set the next track
+      return newQueue; // Update the queue
+    });
+  }, [currentTrack]);
+  
 
 
 
@@ -677,43 +680,36 @@ export function SpotifyClone() {
   
 
   const playTrack = (track: Track) => {
-    if (currentTrack) {
-      setPreviousTracks((prev) => {
-        // Remove any duplicates of the current track
-        const filteredPrev = prev.filter((t) => t.id !== currentTrack.id);
-        return [currentTrack, ...filteredPrev.slice(0, 49)];
-      });
-    }
-    updateQueue(track);
+    setQueue((prevQueue) => {
+      const filteredQueue = prevQueue.filter((t) => t.id !== track.id);
+      return [track, ...filteredQueue];
+    });
     setCurrentTrack(track);
+    setIsPlaying(true);
   };
+  
+  
 
 
   const updateQueue = (track: Track) => {
     setQueue((prevQueue) => {
-      const uniqueTracks = Array.from(
-        new Map(
-          [track, ...prevQueue].map(t => [t.id, t])
-        ).values()
-      );
-      return uniqueTracks;
+      const filteredQueue = prevQueue.filter((t) => t.id !== track.id);
+      return [track, ...filteredQueue];
     });
   };
+  
 
 
   const addToQueue = (tracks: Track | Track[]) => {
-  setQueue((prevQueue) => {
-    // Normalize to an array if a single track is provided
-    const tracksToAdd = Array.isArray(tracks) ? tracks : [tracks];
-
-    // Combine and filter duplicates
-    const updatedQueue = Array.from(
-      new Map([...prevQueue, ...tracksToAdd].map((track) => [track.id, track])).values()
-    );
-
-    return updatedQueue;
-  });
-};
+    setQueue((prevQueue) => {
+      const newTracks = Array.isArray(tracks) ? tracks : [tracks];
+      const filteredNewTracks = newTracks.filter((newTrack) => 
+        !prevQueue.some((existing) => existing.id === newTrack.id)
+      );
+      return [...prevQueue, ...filteredNewTracks];
+    });
+  };
+  
 
 
 
@@ -799,6 +795,16 @@ export function SpotifyClone() {
     };
 
   const handleTrackEnd = useCallback(() => {
+    setQueue((prevQueue) => {
+      if (prevQueue.length > 1) {
+        const [, ...newQueue] = prevQueue; // Remove the current track
+        setCurrentTrack(newQueue[0]); // Move to the next track
+        return newQueue;
+      }
+      setIsPlaying(false); // Stop playback if no tracks remain
+      return prevQueue;
+    });
+
     if (repeatMode === 'one') {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
@@ -1916,25 +1922,36 @@ if (showArtistSelection) {
                 {jumpBackIn.length > 0 ? (
                   <div className="flex space-x-4 overflow-x-auto custom-scrollbar">
 
-                    {jumpBackIn.map((track, index) => (
-                      <div key={index} className="flex-shrink-0 w-40">
-                        <div className="relative">
-                          <img
-                            src={track.album.cover_medium}
-                            alt={track.title}
-                            className="w-40 h-40 object-cover rounded-lg mb-2"
-                          />
-                          <button
-                            className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                            onClick={() => playTrack(track)}
-                          >
-                            <Play className="w-12 h-12 text-white" />
-                          </button>
-                        </div>
-                        <p className="font-medium text-sm">{track.title}</p>
-                      </div>
-                      
-                    ))}
+{jumpBackIn.map((track, index) => (
+  <motion.div
+    key={index}
+    className="flex-shrink-0 w-40"
+    drag="x"
+    dragConstraints={{ left: -100, right: 100 }}
+    onDragEnd={(event, info) => {
+      if (info.offset.x < -80) {
+        playTrack(track); // Play and update the queue
+      }
+    }}
+    whileTap={{ scale: 0.95 }}
+  >
+    <div className="relative">
+      <img
+        src={track.album.cover_medium}
+        alt={track.title}
+        className="w-40 h-40 object-cover rounded-lg mb-2"
+      />
+      <button
+        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+        onClick={() => playTrack(track)} // Properly integrates into queue
+      >
+        <Play className="w-12 h-12 text-white" />
+      </button>
+    </div>
+    <p className="font-medium text-sm text-center">{track.title}</p>
+  </motion.div>
+))}
+
 
                   </div>
                 ) : (

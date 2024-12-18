@@ -7,8 +7,8 @@ import {
   Music, Download, Share2, Radio, Plus, Library,
   Shuffle, Repeat, Repeat1, Mic2, ListMusic,
   ArrowLeft, MoreHorizontal, Cast, Airplay,
-  Ban, Crown, Settings, 
-  Share, Star, RefreshCw, Flag, AlertCircle, Lock, UserPlus, Trash2,
+  Ban, Crown, Fan, CircleDollarSign, 
+  Share, Star, Flag, AlertCircle, Lock, UserPlus, Trash2,
   ListX,
 } from 'lucide-react';
 
@@ -181,8 +181,8 @@ const QualityBadge: React.FC<{
   const icons = {
     MAX: Crown,
     HIGH: Star,
-    NORMAL: Settings,
-    DATA_SAVER: RefreshCw,
+    NORMAL: Fan,
+    DATA_SAVER: CircleDollarSign,
   };
 
   const qualityColors = {
@@ -1144,21 +1144,19 @@ const handleForwardClick = () => {
                 
               ) : (
                 <>
-                  {/* Album Art with Blur Background */}
-                  {/* Album Art with Blur Background */}
-<div className="relative w-full h-[min(60vw,320px)] flex justify-center items-center mb-8 flex-shrink-0">
-  {/* Background Blur */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${currentTrack.album.cover_medium})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'blur(20px)',
-          transform: 'scale(1.2)',
-          zIndex: -1,
-        }}
-      ></div>
+              <div className="relative w-full h-[min(60vw,320px)] flex justify-center items-center mb-8 flex-shrink-0">
+                {/* Background Blur */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url(${currentTrack.album.cover_medium})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'blur(20px)',
+                        transform: 'scale(1.2)',
+                        zIndex: -1,
+                      }}
+                    ></div>
 
 
   {/* Foreground Album Art */}
@@ -1288,66 +1286,71 @@ const handleForwardClick = () => {
 
             {/* Audio Quality Menu Modal */}
             <AnimatePresence>
-              {showAudioMenu && (
-                <motion.div
-                  className="fixed inset-0 bg-black/80 z-50"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setShowAudioMenu(false)}
-                >
+  {showAudioMenu && (
+    <motion.div
+      className="fixed inset-0 bg-black/80 z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => setShowAudioMenu(false)}
+    >
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4">
+          <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
+          <h3 className="text-lg font-bold text-white mb-4 text-center">Audio Quality</h3>
+
+          {(['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'] as AudioQuality[]).map((quality) => (
+            <button
+              key={quality}
+              className={`w-full flex items-center justify-between p-4 rounded-lg mb-2 transition-all
+                ${audioQuality === quality ? 'bg-white/10' : 'hover:bg-white/5'}`}
+              onClick={() => {
+                setAudioQuality(quality);
+                setShowAudioMenu(false);
+              }}
+            >
+              {/* Left Section for Quality Label and Description */}
+              <div className="flex flex-col items-start justify-center">
+                <p className="text-white font-semibold leading-none">{quality}</p>
+                <p className="text-sm text-white/60 leading-none mt-1">
+                  {quality === 'MAX' && 'HiFi Plus Quality (24-bit, up to 192kHz)'}
+                  {quality === 'HIGH' && 'HiFi Quality (16-bit, 44.1kHz)'}
+                  {quality === 'NORMAL' && 'High Quality (320kbps AAC)'}
+                  {quality === 'DATA_SAVER' && 'Data Saver (128kbps AAC)'}
+                </p>
+              </div>
+
+              {/* Right Section for Indicator */}
+              {quality === audioQuality && (
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
                   <motion.div
-                    className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 rounded-t-3xl"
-                    initial={{ y: '100%' }}
-                    animate={{ y: 0 }}
-                    exit={{ y: '100%' }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-4">
-                      <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
-                      <h3 className="text-lg font-bold text-white mb-4">Audio Quality</h3>
-
-                      {(['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'] as AudioQuality[]).map((quality) => (
-                        <button
-                          key={quality}
-                          className={`w-full flex items-center justify-between p-4 rounded-lg mb-2
-                            ${audioQuality === quality ? 'bg-white/10' : 'hover:bg-white/5'}`}
-                          onClick={() => {
-                            setAudioQuality(quality);
-                            setShowAudioMenu(false);
-                          }}
-                        >
-                          <div>
-                            <p className="text-white font-medium">{quality}</p>
-                            <p className="text-sm text-white/60">
-                              {quality === 'MAX' && 'HiFi Plus Quality (24-bit, up to 192kHz)'}
-                              {quality === 'HIGH' && 'HiFi Quality (16-bit, 44.1kHz)'}
-                              {quality === 'NORMAL' && 'High Quality (320kbps AAC)'}
-                              {quality === 'DATA_SAVER' && 'Data Saver (128kbps AAC)'}
-                            </p>
-                          </div>
-                          {quality === audioQuality && (
-                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                              <motion.div
-                                className="w-3 h-3 bg-white rounded-full"
-                                layoutId="quality-indicator"
-                              />
-                            </div>
-                          )}
-                        </button>
-                      ))}
-
-                      <button
-                        className="w-full py-4 text-white/60 hover:text-white transition-colors mt-4"
-                        onClick={() => setShowAudioMenu(false)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
+                    className="w-3 h-3 bg-white rounded-full"
+                    layoutId="quality-indicator"
+                  />
+                </div>
               )}
-            </AnimatePresence>
+            </button>
+          ))}
+
+          {/* Cancel Button */}
+          <button
+            className="w-full py-4 text-white/60 hover:text-white transition-colors mt-4 text-center"
+            onClick={() => setShowAudioMenu(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
 
             {/* More Options Modal */}
             <AnimatePresence>

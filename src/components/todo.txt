@@ -1,11 +1,23 @@
 you still gotta strgatrically add all these icons (so maybe some in the desktoplayer, others in sidebar idk wherever makes most sense): 
 
+The crown, star, fan and CircleDollarSign is for audio (max, high, normal and data saver), Golden, Purple, Blue, Green respectively like below 
+
+{quality === 'MAX' && 'HiFi Plus Quality (24-bit, up to 192kHz)'}
+{quality === 'HIGH' && 'HiFi Quality (16-bit, 44.1kHz)'}
+{quality === 'NORMAL' && 'High Quality (320kbps AAC)'}
+{quality === 'DATA_SAVER' && 'Data Saver (128kbps AAC)'}
+
+
 When you click the thumbnail have it open the song info tab specifically each time
 
 make in tab volume work
 
 Add a connections icon see if you can make that work, like how spotify does it
 
-More padding for seekbar area
+More padding for seekbar area and move it below the controls
+
+Add a full screen button to full screen aswell like on spotify
+
+Auto Scroll to lyrics when playing (take this from mobilePlayer.tsx)
 
 
