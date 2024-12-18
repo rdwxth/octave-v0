@@ -660,24 +660,37 @@ const handleForwardClick = () => {
 
 
 
+  // const getVisibleActionButtons = () => {
+  //   const isSmallScreen = windowDimensions.height <= 667 || windowDimensions.width <= 375;
+  
+  //   // On small screens, just return the action buttons without the More button
+  //   if (isSmallScreen) {
+  //     return actionButtons;
+  //   }
+  
+  //   // On larger screens, append the More button if needed
+  //   return [
+  //     ...actionButtons,
+  //     {
+  //       icon: MoreHorizontal,
+  //       label: 'More',
+  //       onClick: () => setShowMoreOptions(true),
+  //     },
+  //   ];
+  // };
+
   const getVisibleActionButtons = () => {
+    // On small screens, don't render any additional buttons
     const isSmallScreen = windowDimensions.height <= 667 || windowDimensions.width <= 375;
-    const shouldMoveToMoreMenu = isSmallScreen;
-
-    if (shouldMoveToMoreMenu) {
-      return [{
-        icon: MoreHorizontal,
-        label: 'More',
-        onClick: () => setShowMoreOptions(true)
-      }];
+    if (isSmallScreen) {
+      return [];
     }
-
-    return [...actionButtons, {
-      icon: MoreHorizontal,
-      label: 'More',
-      onClick: () => setShowMoreOptions(true)
-    }];
+  
+    // On larger screens, keep regular buttons
+    return actionButtons;
   };
+  
+  
 
   const handleDragEnd = (info: PanInfo) => {
     const threshold = 100; // Minimum distance to trigger a track change
@@ -1254,17 +1267,20 @@ const handleForwardClick = () => {
                   </div>
 
                   {/* Responsive Action Buttons Grid */}
-                  <div className={`w-full grid grid-cols-4 gap-4 mb-6`}>
-                    {getVisibleActionButtons().map((btn, index) => (
-                      <ActionButton
-                        key={index}
-                        icon={btn.icon}
-                        label={btn.label}
-                        active={btn.active}
-                        onClick={btn.onClick}
-                      />
-                    ))}
-                  </div>
+                  {getVisibleActionButtons().length > 0 && (
+                    <div className={`w-full grid grid-cols-4 gap-4 mb-6`}>
+                      {getVisibleActionButtons().map((btn, index) => (
+                        <ActionButton
+                          key={index}
+                          icon={btn.icon}
+                          label={btn.label}
+                          active={btn.active}
+                          onClick={btn.onClick}
+                        />
+                      ))}
+                    </div>
+                  )}
+
 
                 </>
               )}
