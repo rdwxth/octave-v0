@@ -2370,7 +2370,6 @@ if (showArtistSelection) {
             </section>
             ) : (
             <>
-              <h1 className="text-3xl font-bold mb-6">Good morning</h1>
               {/* Recently Played Playlists */}
               {playlists.length > 0 && (
                 <section className="mb-8 overflow-y-auto custom-scrollbar">

@@ -1,0 +1,11 @@
+you still gotta strgatrically add all these icons (so maybe some in the desktoplayer, others in sidebar idk wherever makes most sense): 
+
+When you click the thumbnail have it open the song info tab specifically each time
+
+make in tab volume work
+
+Add a connections icon see if you can make that work, like how spotify does it
+
+More padding for seekbar area
+
+
