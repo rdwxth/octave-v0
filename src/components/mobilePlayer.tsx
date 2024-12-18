@@ -9,7 +9,7 @@ import {
   ArrowLeft, MoreHorizontal, Cast, Airplay,
   Ban, Crown, Fan, CircleDollarSign, 
   Share, Star, Flag, AlertCircle, Lock, UserPlus, Trash2,
-  ListX,
+  ListX, Guitar
 } from 'lucide-react';
 
 
@@ -71,6 +71,7 @@ interface MobilePlayerProps {
   currentTrackIndex: number;
   onQueueItemClick: (track: Track, index: number) => void;
   setIsPlayerOpen: (isOpen: boolean) => void;
+  listenCount: number;
 }
 
 
@@ -245,6 +246,7 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   duration,
   handleSeek,
   isLiked,
+  listenCount,
   toggleLike,
   lyrics,
   currentLyricIndex,
@@ -873,27 +875,28 @@ const handleForwardClick = () => {
               </button>
 
               <div className="flex items-center space-x-2">
-                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <Cast className="w-5 h-5 text-white/60" />
-                </button>
-                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <Airplay className="w-5 h-5 text-white/60" />
-                </button>
+              <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <Cast className="w-5 h-5 text-white/60" />
+              </button>
+              <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <Airplay className="w-5 h-5 text-white/60" />
+              </button>
+              <button
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                onClick={() => setShowQueue(true)}
+              >
+                <ListMusic className="w-5 h-5 text-white/60" />
+              </button>
+              {isSmallDevice && (
                 <button
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  onClick={() => setShowQueue(true)}
+                  onClick={() => setShowMoreOptions(true)}
                 >
-                  <ListMusic className="w-5 h-5 text-white/60" />
+                  <MoreHorizontal className="w-5 h-5 text-white/60" />
                 </button>
-                {isSmallDevice && (
-                  <button
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                    onClick={() => setShowMoreOptions(true)}
-                  >
-                    <MoreHorizontal className="w-5 h-5 text-white/60" />
-                  </button>
-                )}
-              </div>
+              )}
+            </div>
+
             </div>
 
             {/* Main Content */}
@@ -1199,7 +1202,13 @@ const handleForwardClick = () => {
                   </div>
 
                   {/* Quality Badge */}
-                  <QualityBadge quality={audioQuality} onClick={() => setShowAudioMenu(true)} />
+                  <div className="flex flex-col items-center">
+                    <QualityBadge quality={audioQuality} onClick={() => setShowAudioMenu(true)} />
+                    <p className="text-[#FFD700] text-xs mt-1 flex items-center space-x-1">
+                      <Guitar className="w-4 h-4 inline-block" />
+                      <span>Listened to {listenCount} times</span>
+                    </p>
+                  </div>
 
                   {/* Seekbar and Time */}
                   <div className="w-full mb-8 mt-6">
@@ -1275,16 +1284,25 @@ const handleForwardClick = () => {
 
                   {/* Responsive Action Buttons Grid */}
                   {getVisibleActionButtons().length > 0 && (
-                    <div className={`w-full grid grid-cols-4 gap-4 mb-6`}>
-                      {getVisibleActionButtons().map((btn, index) => (
-                        <ActionButton
-                          key={index}
-                          icon={btn.icon}
-                          label={btn.label}
-                          active={btn.active}
-                          onClick={btn.onClick}
-                        />
-                      ))}
+                    <div className="w-full flex flex-wrap justify-center gap-8 mb-4">
+                    {getVisibleActionButtons().map((btn, index) => (
+                      <ActionButton
+                        key={index}
+                        icon={btn.icon}
+                        label={btn.label}
+                        active={btn.active}
+                        onClick={btn.onClick}
+                      />
+                    ))}
+                    {/* Explicitly render More Options for larger devices */}
+                    <div className="md:flex">
+                      <ActionButton
+                        icon={MoreHorizontal}
+                        label="More"
+                        onClick={() => setShowMoreOptions(true)}
+                      />
+                    </div>
+
                     </div>
                   )}
 

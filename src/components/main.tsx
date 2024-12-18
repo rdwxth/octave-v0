@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
-const API_BASE_URL = 'https://mbck.cloudgen.xyz/';
+const API_BASE_URL = 'https://mbck.cloudgen.xyz';
 
 interface Track {
   id: string;
@@ -215,10 +215,20 @@ export function SpotifyClone() {
   const [showLyrics, setShowLyrics] = useState<boolean>(false);
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [currentLyricIndex, setCurrentLyricIndex] = useState<number>(0);
+  const [listenCount, setListenCount] = useState<number>(0);
+
 
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const preloadedAudios = useRef<HTMLAudioElement[]>([new Audio(), new Audio(), new Audio()]);
   const lyricsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (currentTrack) {
+      const counts = JSON.parse(localStorage.getItem('listenCounts') || '{}');
+      setListenCount(counts[currentTrack.id] || 0);
+    }
+  }, [currentTrack]);
+  
 
   const onQueueItemClick = (track: Track, index: number) => {
     if (index < 0) {
@@ -795,6 +805,13 @@ export function SpotifyClone() {
     };
 
   const handleTrackEnd = useCallback(() => {
+    if (currentTrack) {
+      const counts = JSON.parse(localStorage.getItem('listenCounts') || '{}');
+      counts[currentTrack.id] = (counts[currentTrack.id] || 0) + 1;
+      localStorage.setItem('listenCounts', JSON.stringify(counts));
+      setListenCount(counts[currentTrack.id]); 
+    }
+
     setQueue((prevQueue) => {
       if (prevQueue.length > 1) {
         const [, ...newQueue] = prevQueue; // Remove the current track
@@ -839,7 +856,29 @@ export function SpotifyClone() {
       console.log("Setting audio loop to:", shouldLoop);
       audioRef.current.loop = shouldLoop;
     }
-  }, [repeatMode]);
+  }, [repeatMode, queue, currentTrack, skipTrack]);
+
+  const [audioQuality, setAudioQuality] = useState<'MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER'>(() => {
+    return (localStorage.getItem('audioQuality') as 'MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER') || 'HIGH';
+  });
+  
+  const onCycleAudioQuality = () => {
+    const order: ('MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER')[] = ['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'];
+    const currentIndex = order.indexOf(audioQuality);
+    const nextIndex = (currentIndex + 1) % order.length;
+    const newQuality = order[nextIndex];
+    setAudioQuality(newQuality);
+    localStorage.setItem('audioQuality', newQuality);
+  };
+
+
+  const onVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    audioRef.current.volume = newVolume;
+    localStorage.setItem('volume', newVolume.toString());
+  };
+  
+  
 
 // Effect for setting up the ended event listener
 useEffect(() => {
@@ -2046,6 +2085,7 @@ if (showArtistSelection) {
             previousTrack={previousTrack}
             seekPosition={seekPosition}
             duration={duration}
+            listenCount={listenCount}
             handleSeek={handleSeek}
             isLiked={isLiked}
             repeatMode={repeatMode}
@@ -2479,32 +2519,38 @@ if (showArtistSelection) {
       {currentTrack && (
         <footer className="hidden md:block">
           <DesktopPlayer
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            previousTracks={previousTracks}
-            setQueue={setQueue}
-            togglePlay={togglePlay}
-            skipTrack={skipTrack}
-            previousTrack={previousTrack}
-            seekPosition={seekPosition}
-            duration={duration}
-            handleSeek={handleSeek}
-            isLiked={isLiked}
-            repeatMode={repeatMode}
-            setRepeatMode={setRepeatMode}
-            toggleLike={toggleLike}
-            lyrics={lyrics}
-            currentLyricIndex={currentLyricIndex}
-            showLyrics={showLyrics}
-            toggleLyricsView={toggleLyricsView}
-            shuffleOn={shuffleOn}
-            shuffleQueue={shuffleQueue}
-            queue={queue}
-            currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
-            removeFromQueue={removeFromQueue}
-            onQueueItemClick={onQueueItemClick}
-            setIsPlayerOpen={setIsPlayerOpen}
-          />
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+              previousTracks={previousTracks}
+              setQueue={setQueue}
+              togglePlay={togglePlay}
+              skipTrack={skipTrack}
+              previousTrack={previousTrack}
+              seekPosition={seekPosition}
+              duration={duration}
+              handleSeek={handleSeek}
+              isLiked={isLiked}
+              repeatMode={repeatMode}
+              setRepeatMode={setRepeatMode}
+              toggleLike={toggleLike}
+              lyrics={lyrics}
+              currentLyricIndex={currentLyricIndex}
+              showLyrics={showLyrics}
+              toggleLyricsView={toggleLyricsView}
+              shuffleOn={shuffleOn}
+              shuffleQueue={shuffleQueue}
+              queue={queue}
+              currentTrackIndex={queue.findIndex((t) => t.id === currentTrack?.id)}
+              removeFromQueue={removeFromQueue}
+              onQueueItemClick={onQueueItemClick}
+              setIsPlayerOpen={setIsPlayerOpen}
+              volume={volume}
+              onVolumeChange={onVolumeChange}
+              audioQuality={audioQuality}
+              onCycleAudioQuality={onCycleAudioQuality}
+              listenCount={listenCount}
+            />
+
         </footer>
       )}
       {/* Modals */}
