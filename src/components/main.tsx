@@ -1267,23 +1267,6 @@ export function SpotifyClone() {
     }
   }, [currentTrack]);
 
-  if (showOnboarding) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black custom-scrollbar overflow-y-auto">
-        {onboardingStep === 1 && <OnboardingStep1 onComplete={handleStep1Complete} />}
-        {onboardingStep === 2 && <ArtistSelection onComplete={handleStep2Complete} />}
-      </div>
-    );
-  }
-
-  if (showArtistSelection) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black">
-        <ArtistSelection onComplete={handleArtistSelectionComplete} />
-      </div>
-    );
-  }
-
   function OnboardingStep1({ onComplete }: { onComplete: () => void }) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-bl from-[#1e1e2f] via-[#282843] to-[#0d0d14] text-white">
@@ -1342,6 +1325,7 @@ export function SpotifyClone() {
     },
     [searchType]
   );
+
 
   if (showOnboarding) {
     return (
