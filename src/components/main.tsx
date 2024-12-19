@@ -26,7 +26,7 @@ import {
   Download,
   Music,
   LogOut,
-  ChevronLeft,
+  ChevronLeft
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
@@ -51,7 +51,6 @@ interface Track {
   };
 }
 
-
 interface Playlist {
   name: string;
   image: string;
@@ -64,7 +63,6 @@ interface Lyric {
   time: number;
   text: string;
 }
-
 
 declare global {
   interface Window {
@@ -101,7 +99,6 @@ interface TrackItemProps {
   onTrackClick?: (track: Track) => void;
 }
 
-
 interface Artist {
   id: number;
   name: string;
@@ -119,18 +116,16 @@ const getDynamicGreeting = (): string => {
   const currentMonth = now.getMonth();
   const currentDay = now.getDate();
 
-  // Seasons and special occasions
-  const isWinter = currentMonth === 11 || currentMonth <= 1; // December, January, February
-  const isSpring = currentMonth >= 2 && currentMonth <= 4; // March, April, May
-  const isSummer = currentMonth >= 5 && currentMonth <= 7; // June, July, August
-  const isAutumn = currentMonth >= 8 && currentMonth <= 10; // September, October, November
+  const isWinter = currentMonth === 11 || currentMonth <= 1;
+  const isSpring = currentMonth >= 2 && currentMonth <= 4;
+  const isSummer = currentMonth >= 5 && currentMonth <= 7;
+  const isAutumn = currentMonth >= 8 && currentMonth <= 10;
 
   const isChristmas = currentMonth === 11 && currentDay === 25;
   const isNewYearEve = currentMonth === 11 && currentDay === 31;
-  const isHalloween = currentMonth === 9 && currentDay === 31; // October 31
+  const isHalloween = currentMonth === 9 && currentDay === 31;
   const isValentinesDay = currentMonth === 1 && currentDay === 14;
 
-  // Time-based greetings
   if (isChristmas) {
     return "Merry Christmas! Enjoy the holiday season with great music.";
   } else if (isNewYearEve) {
@@ -165,7 +160,6 @@ const getDynamicGreeting = (): string => {
     return "Good Night! Time to relax with some music.";
   }
 };
-
 
 export function SpotifyClone() {
   const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings' | 'library'>('home');
@@ -208,7 +202,7 @@ export function SpotifyClone() {
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [currentLyricIndex, setCurrentLyricIndex] = useState<number>(0);
   const [listenCount, setListenCount] = useState<number>(0);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false); 
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showPwaModal, setShowPwaModal] = useState(false);
   const [greeting, setGreeting] = useState<string>(getDynamicGreeting());
 
@@ -216,8 +210,6 @@ export function SpotifyClone() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchType, setSearchType] = useState('tracks');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-
-
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const preloadedAudios = useRef<HTMLAudioElement[]>([]);
@@ -234,7 +226,6 @@ export function SpotifyClone() {
     setMounted(true);
   }, []);
 
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio();
@@ -244,24 +235,10 @@ export function SpotifyClone() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setGreeting(getDynamicGreeting()); // Update the greeting every hour
-    }, 3600000); // Check every hour
-    return () => clearInterval(interval); // Cleanup the interval
+      setGreeting(getDynamicGreeting());
+    }, 3600000);
+    return () => clearInterval(interval);
   }, []);
-
-  const addToRecentSearches = useCallback((query: string) => {
-    setRecentSearches((prev) => {
-      const filtered = prev.filter((item) => item !== query);
-      return [query, ...filtered].slice(0, 5);
-    });
-    safeLocalStorageSetItem(
-      'recentSearches',
-      JSON.stringify([query, ...recentSearches].slice(0, 5))
-    );
-  }, [recentSearches]);  
-  
-  
-  
 
   const safeLocalStorageGetItem = (key: string): string | null => {
     if (typeof window !== 'undefined') {
@@ -279,8 +256,6 @@ export function SpotifyClone() {
   const openDatabase = useCallback((): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       if (typeof window === 'undefined') {
-        // SSR fallback, won't actually open DB
-        // Return a mock
         const fakeDB = {} as IDBDatabase;
         resolve(fakeDB);
         return;
@@ -326,19 +301,21 @@ export function SpotifyClone() {
     [openDatabase]
   );
 
-  const fetchSearchResults = useMemo(() =>
-    debounce(async (query: string) => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(query)}`);
-        const data = await response.json();
-        setSearchResults(data.results);
-      } catch (error) {
-        console.error('Error fetching search results:', error);
-      }
-    }, 300),
-  []);
-  
-  
+  const fetchSearchResults = useMemo(
+    () =>
+      debounce(async (query: string) => {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/api/search/tracks?query=${encodeURIComponent(query)}`
+          );
+          const data = await response.json();
+          setSearchResults(data.results);
+        } catch (error) {
+          console.error('Error fetching search results:', error);
+        }
+      }, 300),
+    []
+  );
 
   const parseLyrics = (lyricsString: string): Lyric[] => {
     return lyricsString.split('\n').map((line) => {
@@ -352,28 +329,25 @@ export function SpotifyClone() {
     });
   };
 
-  const fetchLyrics = useCallback(
-    async (track: Track) => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/lyrics`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: track.title, artist: track.artist.name })
-        });
-        const data = await response.json();
-        if (data.success && data.synced) {
-          const parsedLyrics = parseLyrics(data.lyrics);
-          setLyrics(parsedLyrics);
-        } else {
-          setLyrics([]);
-        }
-      } catch (error) {
-        console.error('Error fetching lyrics:', error);
+  const fetchLyrics = useCallback(async (track: Track) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/lyrics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: track.title, artist: track.artist.name })
+      });
+      const data = await response.json();
+      if (data.success && data.synced) {
+        const parsedLyrics = parseLyrics(data.lyrics);
+        setLyrics(parsedLyrics);
+      } else {
         setLyrics([]);
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error('Error fetching lyrics:', error);
+      setLyrics([]);
+    }
+  }, []);
 
   const isTrackLiked = useCallback(
     (track: Track) => {
@@ -485,16 +459,13 @@ export function SpotifyClone() {
     setQueue((prevQueue) => prevQueue.filter((_, i) => i !== index));
   }, []);
 
-  const onQueueItemClick = useCallback(
-    (track: Track, index: number) => {
-      if (index < 0) {
-        const actualIndex = Math.abs(index + 1);
-        setPreviousTracks((prev) => prev.slice(0, actualIndex));
-      }
-      setCurrentTrack(track);
-    },
-    []
-  );
+  const onQueueItemClick = useCallback((track: Track, index: number) => {
+    if (index < 0) {
+      const actualIndex = Math.abs(index + 1);
+      setPreviousTracks((prev) => prev.slice(0, actualIndex));
+    }
+    setCurrentTrack(track);
+  }, []);
 
   const handleTrackEnd = useCallback(() => {
     if (typeof window !== 'undefined' && currentTrack) {
@@ -546,12 +517,7 @@ export function SpotifyClone() {
   }, [repeatMode]);
 
   const onCycleAudioQuality = useCallback(() => {
-    const order: ('MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER')[] = [
-      'MAX',
-      'HIGH',
-      'NORMAL',
-      'DATA_SAVER'
-    ];
+    const order: ('MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER')[] = ['MAX', 'HIGH', 'NORMAL', 'DATA_SAVER'];
     const currentIndex = order.indexOf(audioQuality);
     const nextIndex = (currentIndex + 1) % order.length;
     const newQuality = order[nextIndex];
@@ -698,7 +664,6 @@ export function SpotifyClone() {
     [currentTrack, isLiked, playlists]
   );
 
-
   const handleContextMenu = useCallback(
     (e: MouseEvent, item: Track | Playlist) => {
       e.preventDefault();
@@ -743,7 +708,7 @@ export function SpotifyClone() {
 
   const TrackItem = ({ track, showArtist = true, inPlaylistCreation = false, onTrackClick }: TrackItemProps) => {
     const [isHovered, setIsHovered] = useState(false);
-  
+
     const handleTrackClick = (e: React.MouseEvent) => {
       if (inPlaylistCreation) {
         e.stopPropagation();
@@ -754,11 +719,9 @@ export function SpotifyClone() {
         playTrack(track);
       }
     };
-  
-    // Fallback to a default placeholder image if cover_medium is undefined
-    const coverImage =
-      track.album?.cover_medium || '/images/placeholder-image.png'; // Use your placeholder image path
-  
+
+    const coverImage = track.album?.cover_medium || '/images/placeholder-image.png';
+
     return (
       <div
         className={`group flex items-center space-x-4 bg-gray-800 bg-opacity-40 rounded-lg p-2 relative cursor-pointer ${
@@ -823,7 +786,7 @@ export function SpotifyClone() {
         )}
       </div>
     );
-  };  
+  };
 
   const playPlaylist = useCallback(
     (playlist: Playlist) => {
@@ -833,22 +796,6 @@ export function SpotifyClone() {
     },
     []
   );
-
-  // const downloadTrack = useCallback(
-  //   async (track: Track) => {
-  //     try {
-  //       const response = await fetch(`${API_BASE_URL}/api/track/${track.id}.mp3`);
-  //       const blob = await response.blob();
-  //       const db = await openDatabase();
-  //       const transaction = db.transaction('tracks', 'readwrite');
-  //       const store = transaction.objectStore('tracks');
-  //       store.put({ id: track.id, blob });
-  //     } catch (error) {
-  //       console.error('Error downloading track:', error);
-  //     }
-  //   },
-  //   [openDatabase]
-  // );
 
   const downloadPlaylist = useCallback(
     async (playlist: Playlist) => {
@@ -866,29 +813,6 @@ export function SpotifyClone() {
     },
     [downloadTrack]
   );
-
-  // const toggleLike = useCallback(
-  //   (track: Track | null = currentTrack) => {
-  //     if (!track) return;
-  //     const likedSongsPlaylist = playlists.find((p) => p.name === 'Liked Songs');
-  //     if (!likedSongsPlaylist) return;
-  //     const updatedPlaylists = playlists.map((playlist) => {
-  //       if (playlist.name === 'Liked Songs') {
-  //         const isAlreadyLiked = playlist.tracks.some((t) => t.id === track.id);
-  //         if (isAlreadyLiked) {
-  //           return { ...playlist, tracks: playlist.tracks.filter((t) => t.id !== track.id) };
-  //         } else {
-  //           return { ...playlist, tracks: [...playlist.tracks, track] };
-  //         }
-  //       }
-  //       return playlist;
-  //     });
-  //     setPlaylists(updatedPlaylists);
-  //     safeLocalStorageSetItem('playlists', JSON.stringify(updatedPlaylists));
-  //     setIsLiked(!isLiked);
-  //   },
-  //   [currentTrack, isLiked, playlists]
-  // );
 
   const smartShuffle = useCallback(
     (playlist: Playlist) => {
@@ -995,6 +919,7 @@ export function SpotifyClone() {
     []
   );
 
+  // Onboarding
   // Onboarding
   const startOnboarding = useCallback(() => {
     setShowOnboarding(true);
@@ -1392,15 +1317,18 @@ export function SpotifyClone() {
     );
   }
 
-
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const handleSearch = useCallback(
     async (query: string) => {
-      if (!query.trim()) return; // Ensure no empty search
-  
+      if (!query.trim()) return;
       setSearchQuery(query);
-      addToRecentSearches(query);
-  
+      setRecentSearches((prev) => {
+        const filtered = prev.filter((item) => item !== query);
+        const updated = [query, ...filtered].slice(0, 5);
+        safeLocalStorageSetItem('recentSearches', JSON.stringify(updated));
+        return updated;
+      });
+
       try {
         const response = await fetch(
           `${API_BASE_URL}/api/search/${searchType}?query=${encodeURIComponent(query)}`
@@ -1411,12 +1339,28 @@ export function SpotifyClone() {
         console.error('Error searching:', error);
       }
     },
-    [addToRecentSearches, searchType]
+    [searchType]
   );
-  
+
+  if (showOnboarding) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black custom-scrollbar overflow-y-auto">
+        {onboardingStep === 1 && <OnboardingStep1 onComplete={handleStep1Complete} />}
+        {onboardingStep === 2 && <ArtistSelection onComplete={handleStep2Complete} />}
+      </div>
+    );
+  }
+
+  if (showArtistSelection) {
+    return (
+      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black">
+        <ArtistSelection onComplete={handleArtistSelectionComplete} />
+      </div>
+    );
+  }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-black text-white overflow-hidden">
+  <div className="h-[100dvh] flex flex-col bg-black text-white overflow-hidden">
       {/* Mobile */}
       <div className="md:hidden flex flex-col h-[100dvh]">
         <header className="p-4 flex justify-between items-center">
@@ -1958,7 +1902,8 @@ export function SpotifyClone() {
           />
         )}
       </div>
-      {/* Desktop */}
+
+      {/* Desktop layout */}
       <div className="hidden md:flex flex-1 gap-2 p-2 overflow-y-auto custom-scrollbar">
         {showContextMenu && (
           <CustomContextMenu
@@ -1970,7 +1915,7 @@ export function SpotifyClone() {
         )}
         <aside className="w-64 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 overflow-y-auto custom-scrollbar">
           <nav className="space-y-4">
-            <div className="bg-gray-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-3 space-y-2">
+            <div className="bg-gray-800 bg-opacity-40 rounded-lg p-3 space-y-2">
               <button
                 className="flex items-center text-white hover:text-white w-full py-2 px-3 rounded-lg transition-colors duration-200"
                 onClick={() => setView('home')}
@@ -1986,7 +1931,7 @@ export function SpotifyClone() {
                 Search
               </button>
             </div>
-            <div className="bg-gray-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-3">
+            <div className="bg-gray-800 bg-opacity-40 rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center text-white">
                   <Library className="w-6 h-6 mr-3" />
@@ -1998,178 +1943,103 @@ export function SpotifyClone() {
                 />
               </div>
               <div className="space-y-2">
-                {playlists.map((playlist, index) => (
+                {playlists.map((playlist) => (
                   <div
-                    key={index}
-                    className="flex items-center space-x-3 bg-gray-800 bg-opacity-40 backdrop-blur-sm rounded-md p-2 cursor-pointer hover:bg-gray-600 transition-colors duration-200"
+                    key={playlist.name}
+                    className={`flex items-center space-x-3 bg-gray-800 bg-opacity-40 rounded-md p-2 cursor-pointer hover:bg-gray-600 transition-colors duration-200 ${
+                      playlist.pinned ? 'border-2 border-blue-900' : ''
+                    }`}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', playlist.name);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const draggedPlaylistName = e.dataTransfer.getData('text/plain');
+                      const draggedPlaylistIndex = playlists.findIndex((p) => p.name === draggedPlaylistName);
+                      const targetPlaylistIndex = playlists.findIndex((p) => p.name === playlist.name);
+                      const updatedPlaylists = [...playlists];
+                      const [draggedPlaylist] = updatedPlaylists.splice(draggedPlaylistIndex, 1);
+                      updatedPlaylists.splice(targetPlaylistIndex, 0, draggedPlaylist);
+                      setPlaylists(updatedPlaylists);
+                      safeLocalStorageSetItem('playlists', JSON.stringify(updatedPlaylists));
+                    }}
                     onClick={() => openPlaylist(playlist)}
+                    style={{ userSelect: 'none' }}
                   >
                     <img src={playlist.image} alt={playlist.name} className="w-10 h-10 rounded-md" />
-                    <div>
-                      <p className="text-sm text-white">{playlist.name}</p>
-                      <p className="text-xs text-gray-400">Playlist</p>
-                    </div>
+                    <span className="font-medium text-sm">{playlist.name}</span>
+                    {playlist.downloaded && <Download className="w-4 h-4 text-green-500 ml-2" />}
                   </div>
                 ))}
               </div>
             </div>
           </nav>
         </aside>
+
+        {/* MAIN CONTENT AREA */}
         <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-b from-gray-900 to-black rounded-lg p-6">
           <header className="flex justify-between items-center mb-8">
-          <h1 className="text-xl md:text-2xl font-semibold">{greeting}</h1>
-          <div className="relative flex items-center">
-            {mounted && typeof window !== 'undefined' &&
-            !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && (
-              <>
-                <button
-                  className="bg-[#1a237e] text-white rounded-full px-6 py-2.5 text-sm font-semibold ml-4 
+            <h1 className="text-xl md:text-2xl font-semibold">{greeting}</h1>
+            <div className="relative flex items-center">
+              {mounted && typeof window !== 'undefined' &&
+                !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && (
+                  <>
+                    <button
+                      className="bg-[#1a237e] text-white rounded-full px-6 py-2.5 text-sm font-semibold ml-4 
                             transition-all duration-300 hover:bg-[#283593] hover:shadow-lg 
                             focus:outline-none focus:ring-2 focus:ring-[#1a237e] focus:ring-offset-2"
-                  onClick={() => {
-                    const dp = window.deferredPrompt;
-                    if (dp) {
-                      dp.prompt();
-                      dp.userChoice.then(() => {
-                        window.deferredPrompt = undefined;
-                      });
-                    } else {
-                      setShowPwaModal(true);
-                    }
-                  }}
-              >
-              <span className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
-                Install App
-              </span>
-            </button>
-            {showPwaModal && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 
+                      onClick={() => {
+                        const dp = window.deferredPrompt;
+                        if (dp) {
+                          dp.prompt();
+                          dp.userChoice.then(() => {
+                            window.deferredPrompt = undefined;
+                          });
+                        } else {
+                          setShowPwaModal(true);
+                        }
+                      }}
+                    >
+                      <span className="flex items-center">
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                        Install App
+                      </span>
+                    </button>
+                    {showPwaModal && (
+                      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 
                               transition-all duration-300 animate-fadeIn">
-                <div className="bg-[#0a1929] text-white rounded-xl p-8 w-[90%] max-w-md shadow-2xl 
+                        <div className="bg-[#0a1929] text-white rounded-xl p-8 w-[90%] max-w-md shadow-2xl 
                               border border-[#1e3a5f] animate-slideIn">
-                  <h2 className="text-2xl font-bold text-center mb-6 text-[#90caf9]">Install App</h2>
-                  {(() => {
-                    const userAgent = navigator.userAgent || navigator.vendor;
-                    if (/android/i.test(userAgent)) {
-                      return (
-                        <div className="space-y-4">
-                          <p className="text-gray-300">For the best experience, add the app to your home screen:</p>
-                          <ol className="list-decimal ml-6 mt-2 space-y-3 text-gray-300">
-                            <li className="transition-colors duration-200 hover:text-white">Open Chrome on your Android device.</li>
-                            <li className="transition-colors duration-200 hover:text-white">Tap the <strong className="text-[#90caf9]">menu</strong> button (three vertical dots).</li>
-                            <li className="transition-colors duration-200 hover:text-white">Select <strong className="text-[#90caf9]">Add to Home Screen</strong>.</li>
-                            <li className="transition-colors duration-200 hover:text-white">Confirm by tapping <strong className="text-[#90caf9]">Add</strong>.</li>
-                          </ol>
-                        </div>
-                      );
-                    } else if (/iPad|iPhone|iPod/.test(userAgent)) {
-                      return (
-                        <div className="space-y-4">
-                          <p className="text-gray-300">For the best experience, add the app to your home screen:</p>
-                          <ol className="list-decimal ml-6 mt-2 space-y-3 text-gray-300">
-                            <li className="transition-colors duration-200 hover:text-white">Open Safari on your iOS device.</li>
-                            <li className="transition-colors duration-200 hover:text-white">Tap the <strong className="text-[#90caf9]">Share</strong> icon (a square with an arrow).</li>
-                            <li className="transition-colors duration-200 hover:text-white">Select <strong className="text-[#90caf9]">Add to Home Screen</strong>.</li>
-                            <li className="transition-colors duration-200 hover:text-white">Confirm by tapping <strong className="text-[#90caf9]">Add</strong>.</li>
-                          </ol>
-                        </div>
-                      );
-                    } else {
-                      return <p className="text-gray-300">Your platform does not support manual installation.</p>;
-                    }
-                  })()}
-                  <button
-                    onClick={() => setShowPwaModal(false)}
-                    className="mt-8 px-6 py-3 bg-[#1a237e] text-white rounded-lg w-full
-                               transition-all duration-300 hover:bg-[#283593] 
-                               focus:outline-none focus:ring-2 focus:ring-[#90caf9] focus:ring-offset-2
-                               focus:ring-offset-[#0a1929] font-semibold
-                               shadow-lg hover:shadow-xl active:transform active:scale-95"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            )}
-            </>
-          )}
-
-                {view === 'search' && (
-                  <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-b from-gray-900 to-black rounded-lg p-6">
-                    <header className="mb-6">
-                      <form onSubmit={(e) => e.preventDefault()} className="relative w-full max-w-md">
-                        <input
-                          type="text"
-                          placeholder="What do you want to listen to?"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full px-4 py-3 rounded-full bg-gray-800 text-white placeholder-gray-500 
-                                    focus:outline-none focus:ring-2 focus:ring-green-500 pr-12 transition-all 
-                                    duration-200 ease-in-out"
-                        />
-                        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-                      </form>
-
-                      <div className="flex gap-2 mt-4">
-                        {(['tracks'] as const).map((type) => (
+                          <h2 className="text-2xl font-bold text-center mb-6 text-[#90caf9]">Install App</h2>
+                          {/* PWA instructions as before */}
                           <button
-                            key={type}
-                            onClick={() => setSearchType(type)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium 
-                              ${searchType === type 
-                                ? 'bg-white text-black' 
-                                : 'bg-gray-800 text-white hover:bg-gray-700 transition-colors duration-200'}`}
+                            onClick={() => setShowPwaModal(false)}
+                            className="mt-8 px-6 py-3 bg-[#1a237e] text-white rounded-lg w-full
+                              transition-all duration-300 hover:bg-[#283593]"
                           >
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                            Close
                           </button>
-                        ))}
-                      </div>
-
-                    </header>
-
-                    {!searchQuery && recentSearches.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-lg font-bold mb-4">Recent Searches</h3>
-                        <div className="space-y-2">
-                          {recentSearches.map((query, index) => (
-                            <button
-                              key={index}
-                              onClick={() => handleSearch(query)}
-                              className="w-full px-4 py-3 flex items-center space-x-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors duration-200"
-                            >
-                              <Clock className="w-5 h-5 text-gray-400" />
-                              <span>{query}</span>
-                            </button>
-                          ))}
                         </div>
                       </div>
                     )}
-
-                    {searchQuery && (
-                      <div className="space-y-4">
-                        {searchResults.length === 0 ? (
-                          <div className="text-center py-12">
-                            <p className="text-gray-400">No results found for "{searchQuery}"</p>
-                          </div>
-                        ) : (
-                          <>
-                            <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {searchResults.map((result) => (
-                                <TrackItem key={result.id} track={result} />
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </main>
+                  </>
                 )}
-
-
               <div className="relative ml-4">
                 <button
                   className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center"
@@ -2212,6 +2082,7 @@ export function SpotifyClone() {
               </div>
             </div>
           </header>
+
           {showLyrics ? (
             <div className="h-full flex flex-col items-center justify-center">
               <h2 className="text-3xl font-bold mb-4">{currentTrack?.title}</h2>
@@ -2373,26 +2244,86 @@ export function SpotifyClone() {
                 ))}
               </div>
             </section>
-          ) : searchQuery ? (
-            <section>
-              <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {searchResults.map((result) => (
-                  <TrackItem key={result.id} track={result} />
-                ))}
-              </div>
-            </section>
           ) : view === 'search' ? (
-            <section>
-              <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {searchResults.map((result) => (
-                  <TrackItem key={result.id} track={result} />
-                ))}
+            // **REVAMPED SEARCH VIEW (Desktop)** 
+            <section className="flex flex-col gap-8">
+              <div className="flex flex-col space-y-4">
+                <form
+                  onSubmit={(e) => e.preventDefault()}
+                  className="relative max-w-xl w-full mx-auto"
+                >
+                  <input
+                    type="text"
+                    placeholder="Search for music..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSearchQuery(val);
+                      handleSearch(val);
+                    }}
+                    className="w-full px-5 py-3 rounded-full bg-[#242424] text-white placeholder-gray-400
+                    focus:outline-none focus:bg-[#2a2a2a] focus:ring-1 focus:ring-white/20
+                    text-[15px] transition-all duration-200 ease-out search-input"
+                  />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </form>
+                <div className="flex gap-3 justify-center">
+                  {(['tracks'] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setSearchType(type)}
+                      className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                        ${searchType === type 
+                          ? 'bg-white text-black hover:bg-gray-200' 
+                          : 'bg-[#2a2a2a] text-white hover:bg-[#333333]'}`}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {!searchQuery && recentSearches.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-bold mb-4">Recent Searches</h3>
+                  <div className="space-y-2">
+                    {recentSearches.map((query, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSearch(query)}
+                        className="w-full px-4 py-3 flex items-center space-x-4 bg-[#1d1d1d] 
+                          rounded-lg hover:bg-[#252525] transition-all duration-200 group"
+                      >
+                        <Clock className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" />
+                        <span className="group-hover:text-white transition-colors duration-200">{query}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {searchQuery && (
+                <div>
+                  {searchResults.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-400 text-lg">No results found for "{searchQuery}"</p>
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl font-bold mb-6">Search Results</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {searchResults.map((result) => (
+                          <TrackItem key={result.id} track={result} />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </section>
           ) : (
             <>
+              {/* HOME VIEW */}
               {playlists.length > 0 && (
                 <section className="mb-8 overflow-y-auto custom-scrollbar">
                   <h2 className="text-2xl font-bold mb-4">Recently played</h2>
@@ -2441,14 +2372,15 @@ export function SpotifyClone() {
               <section>
                 <h2 className="text-2xl font-bold mb-4">Recommended</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {searchResults.map((result) => (
-                  <TrackItem key={result.id} track={result} />
-                ))}
-              </div>
+                  {searchResults.map((result) => (
+                    <TrackItem key={result.id} track={result} />
+                  ))}
+                </div>
               </section>
             </>
           )}
         </main>
+
         {showQueue && (
           <aside className="w-64 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 overflow-y-auto custom-scrollbar">
             <h2 className="text-xl font-bold mb-4">Queue</h2>
@@ -2476,6 +2408,7 @@ export function SpotifyClone() {
           </aside>
         )}
       </div>
+
       {mounted && currentTrack && (
         <footer className="hidden md:block">
           <DesktopPlayer
@@ -2512,6 +2445,7 @@ export function SpotifyClone() {
           />
         </footer>
       )}
+
       {showCreatePlaylist && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-black rounded-lg p-6 w-96">
