@@ -35,6 +35,7 @@ import DesktopPlayer from './DesktopPlayer';
 
 const API_BASE_URL = 'https://mbck.cloudgen.xyz';
 
+// types.ts
 interface Track {
   id: string;
   title: string;
@@ -49,6 +50,7 @@ interface Track {
     cover_xl: string;
   };
 }
+
 
 interface Playlist {
   name: string;
@@ -1292,15 +1294,6 @@ export function SpotifyClone() {
             <Cog className="w-6 h-6" />
           </div>
         </header>
-        <form onSubmit={(e: FormEvent<HTMLFormElement>) => e.preventDefault()} className="px-4 mb-4">
-          <input
-            type="text"
-            placeholder="Search tracks..."
-            value={searchQuery}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            className="w-full p-2 rounded-full bg-gray-800 text-white"
-          />
-        </form>
         <nav className="px-4 mb-4">
           <ul className="flex space-x-2 overflow-x-auto custom-scrollbar">
             <li>

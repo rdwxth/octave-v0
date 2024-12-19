@@ -9,6 +9,7 @@ import {
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 
+// types.ts
 interface Track {
   id: string;
   title: string;
@@ -23,6 +24,7 @@ interface Track {
     cover_xl: string;
   };
 }
+
 
 interface Lyric {
   time: number;
