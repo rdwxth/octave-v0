@@ -1,0 +1,1 @@
+Add Artists, Albums and Playlist support like searching, then openeing up the corresponding media in full view to chosoe a trakc or play the playlist etc 
