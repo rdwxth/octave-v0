@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Play, Pause, Volume2, Volume1, VolumeX, Music2, Info, Maximize2, X, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ListMusic,
@@ -27,9 +27,11 @@ interface Track {
 
 
 interface Lyric {
-  time: number;
+  time: number; // Start time in seconds
+  endTime?: number; // End time in seconds
   text: string;
 }
+
 
 type AudioQuality = 'MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER';
 type RepeatMode = 'off' | 'all' | 'one';
@@ -75,6 +77,7 @@ function formatTimeDesktop(seconds: number): string {
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
+
 
 const DesktopSeekbar: React.FC<{
   progress: number;
@@ -192,7 +195,8 @@ export default function DesktopPlayer({
   const [showSidebar, setShowSidebar] = React.useState(false);
   const [tab, setTab] = React.useState<'queue' | 'lyrics' | 'details'>('queue');
   const [userScrollingLyrics, setUserScrollingLyrics] = React.useState(false);
-  const userScrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const userScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isAutoScrollingRef = useRef(false);
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   const isMuted = volume === 0;
@@ -241,34 +245,96 @@ export default function DesktopPlayer({
     }
   };
 
+  const processedLyrics = useMemo(() => {
+    return lyrics.map((lyric, index) => ({
+      ...lyric,
+      endTime: lyrics[index + 1]?.time || duration, // Use track duration for the last lyric
+    }));
+  }, [lyrics, duration]);
+
+  const getLyricProgress = () => {
+    if (currentLyricIndex === -1 || !processedLyrics[currentLyricIndex]) return 0;
+    
+    const currentLyric = processedLyrics[currentLyricIndex];
+    const nextLyric = processedLyrics[currentLyricIndex + 1];
+    
+    const lyricStart = currentLyric.time;
+    const lyricEnd = nextLyric?.time || duration;
+    const lyricDuration = lyricEnd - lyricStart;
+    
+    const elapsed = seekPosition - lyricStart;
+    const progress = Math.min(Math.max(elapsed / lyricDuration, 0), 1);
+    
+    return progress;
+  };
+  
+  const lyricProgress = getLyricProgress();
+  
+
   const scrollToCurrentLyric = useCallback(() => {
-    if (lyricsRef.current && currentLyricIndex >= 0) {
-      const container = lyricsRef.current;
-      const currentLyricElement = container.children[currentLyricIndex] as HTMLElement;
-      if (currentLyricElement && !userScrollingLyrics) {
-        const elementOffset = currentLyricElement.offsetTop;
-        const containerHeight = container.clientHeight;
-        const scrollPosition = elementOffset - containerHeight / 2;
-        container.scrollTo({ top: scrollPosition > 0 ? scrollPosition : 0, behavior: 'smooth' });
-      }
+    if (!lyricsRef.current || currentLyricIndex === -1 || userScrollingLyrics) return;
+  
+    const lyricsContainer = lyricsRef.current;
+    const currentLyricElement = lyricsContainer.children[currentLyricIndex] as HTMLElement;
+    
+    if (currentLyricElement) {
+      isAutoScrollingRef.current = true;
+      const elementOffset = currentLyricElement.offsetTop;
+      const elementHeight = currentLyricElement.offsetHeight;
+      const containerHeight = lyricsContainer.clientHeight;
+      const scrollPosition = elementOffset - (containerHeight / 2) + (elementHeight / 2);
+  
+      lyricsContainer.scrollTo({
+        top: scrollPosition,
+        behavior: 'smooth'
+      });
+  
+      // Reset auto-scrolling flag after animation completes
+      setTimeout(() => {
+        isAutoScrollingRef.current = false;
+      }, 1000);
     }
   }, [currentLyricIndex, userScrollingLyrics]);
+  
 
-  React.useEffect(() => {
-    if (tab === 'lyrics') {
+
+
+  useEffect(() => {
+    if (tab === 'lyrics' && !userScrollingLyrics && currentLyricIndex !== -1) {
       scrollToCurrentLyric();
     }
-  }, [currentLyricIndex, tab, scrollToCurrentLyric]);
-
+  }, [currentLyricIndex, tab, userScrollingLyrics, scrollToCurrentLyric]);
+  
+  // Update the handleLyricsScroll function
   const handleLyricsScroll = () => {
+    if (isAutoScrollingRef.current) return;
+  
     setUserScrollingLyrics(true);
-    if (userScrollTimeout.current) clearTimeout(userScrollTimeout.current);
-    userScrollTimeout.current = setTimeout(() => {
+  
+    if (userScrollTimeoutRef.current) {
+      clearTimeout(userScrollTimeoutRef.current);
+    }
+  
+    userScrollTimeoutRef.current = setTimeout(() => {
       setUserScrollingLyrics(false);
-      scrollToCurrentLyric();
+      // Add this line to trigger a scroll to current lyric after timeout
+      if (tab === 'lyrics' && currentLyricIndex !== -1) {
+        scrollToCurrentLyric();
+      }
     }, 3000);
   };
 
+  
+  useEffect(() => {
+    return () => {
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  
+  
   const TABS = [
     { id: 'queue', label: 'Queue', icon: ListMusic },
     { id: 'lyrics', label: 'Lyrics', icon: Music2 },
@@ -526,27 +592,58 @@ export default function DesktopPlayer({
                         ref={lyricsRef}
                         onScroll={handleLyricsScroll}
                       >
-                        {lyrics.length > 0 ? (
+                        {processedLyrics.length > 0 ? (
                           <div className="space-y-4">
-                            {lyrics.map((lyric, index) => (
-                              <p
-                                key={index}
-                                onClick={() => handleSeek(lyric.time)}
-                                className={`text-lg cursor-pointer transition-colors ${
-                                  index === currentLyricIndex
-                                    ? 'text-white font-medium'
-                                    : 'text-neutral-400 hover:text-white'
-                                }`}
-                              >
-                                {lyric.text}
-                              </p>
-                            ))}
+                            {processedLyrics.map((lyric, index) => {
+                              const isActive = index === currentLyricIndex;
+                              
+                              if (!isActive) {
+                                return (
+                                  <p
+                                    key={index}
+                                    onClick={() => handleSeek(lyric.time)}
+                                    className={`text-lg cursor-pointer transition-all duration-300 ${
+                                      isActive
+                                        ? 'text-white font-medium opacity-100'
+                                        : 'text-neutral-400 hover:text-white opacity-50'
+                                    }`}
+                                  >
+                                    {lyric.text}
+                                  </p>
+                                );
+                              }
+                              
+                              // For the active lyric, split into letters and apply fill based on progress
+                              const letters = lyric.text.split('');
+                              const totalLetters = letters.length;
+                              const filledLetters = Math.floor(lyricProgress * totalLetters);
+                              
+                              return (
+                                <p
+                                  key={index}
+                                  onClick={() => handleSeek(lyric.time)}
+                                  className="text-lg cursor-pointer font-medium text-white"
+                                >
+                                  {letters.map((letter, idx) => (
+                                    <span
+                                      key={idx}
+                                      className={`transition-colors duration-300 ${
+                                        idx < filledLetters ? 'text-white' : 'text-neutral-400'
+                                      }`}
+                                    >
+                                      {letter}
+                                    </span>
+                                  ))}
+                                </p>
+                              );
+                            })}
                           </div>
                         ) : (
                           <p className="text-neutral-400 text-center">No lyrics available</p>
                         )}
                       </div>
                     )}
+
 
                     {tab === 'details' && currentTrack && (
                       <div className="p-4 space-y-6">

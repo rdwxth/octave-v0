@@ -61,7 +61,8 @@ interface Playlist {
 }
 
 interface Lyric {
-  time: number;
+  time: number; // Start time in seconds
+  endTime?: number; // End time in seconds
   text: string;
 }
 
@@ -247,6 +248,32 @@ export function SpotifyClone() {
     }
     return null;
   };
+
+  useEffect(() => {
+    if (lyrics.length > 0 && currentTrack && audioRef.current) {
+      const handleTimeUpdate = () => {
+        const currentTime = audioRef.current?.currentTime || 0;
+  
+        // Find the active lyric line based on current playback time
+        const activeIndex = lyrics.findIndex((lyric, index) => {
+          const isLastLine = index === lyrics.length - 1;
+          const nextLyricTime = isLastLine ? Infinity : lyrics[index + 1].time;
+          return currentTime >= lyric.time && currentTime < nextLyricTime;
+        });
+  
+        // Update only if we found a valid line and it's different from the current one
+        if (activeIndex !== -1 && activeIndex !== currentLyricIndex) {
+          setCurrentLyricIndex(activeIndex);
+        }
+      };
+  
+      audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
+      return () => {
+        audioRef.current?.removeEventListener('timeupdate', handleTimeUpdate);
+      };
+    }
+  }, [lyrics, currentTrack, currentLyricIndex]);
+  
 
   const safeLocalStorageSetItem = (key: string, value: string) => {
     if (typeof window !== 'undefined') {
@@ -665,6 +692,15 @@ export function SpotifyClone() {
     [currentTrack, isLiked, playlists]
   );
 
+  const deletePlaylist = useCallback(
+    (playlist: Playlist) => {
+      const updatedPlaylists = playlists.filter((p) => p.name !== playlist.name);
+      setPlaylists(updatedPlaylists);
+      safeLocalStorageSetItem('playlists', JSON.stringify(updatedPlaylists));
+    },
+    [playlists]
+  );
+
   const handleContextMenu = useCallback(
     (e: MouseEvent, item: Track | Playlist) => {
       e.preventDefault();
@@ -675,14 +711,17 @@ export function SpotifyClone() {
         { label: 'Download', action: () => downloadTrack(item as Track) }
       ];
       if ('tracks' in item) {
-        options.push({ label: 'Pin Playlist', action: () => pinPlaylist(item as Playlist) });
+        options.push(
+          { label: 'Pin Playlist', action: () => pinPlaylist(item as Playlist) },
+          { label: 'Delete Playlist', action: () => deletePlaylist(item as Playlist) } // Add this
+        );
       }
       setContextMenuPosition({ x: e.clientX, y: e.clientY });
       setContextMenuOptions(options);
       setShowContextMenu(true);
     },
-    [addToQueue, downloadTrack, openAddToPlaylistModal, pinPlaylist, toggleLike]
-  );
+    [addToQueue, downloadTrack, openAddToPlaylistModal, pinPlaylist, toggleLike, deletePlaylist]
+  );  
 
   const CustomContextMenu = ({ x, y, onClose, options }: CustomContextMenuProps) => {
     return (
@@ -881,15 +920,6 @@ export function SpotifyClone() {
       reader.readAsDataURL(file);
     }
   };
-
-  const deletePlaylist = useCallback(
-    (playlist: Playlist) => {
-      const updatedPlaylists = playlists.filter((p) => p.name !== playlist.name);
-      setPlaylists(updatedPlaylists);
-      safeLocalStorageSetItem('playlists', JSON.stringify(updatedPlaylists));
-    },
-    [playlists]
-  );
 
   const getMostPlayedArtists = useCallback((): string[] => {
     if (typeof window === 'undefined') return [];
@@ -1620,16 +1650,25 @@ export function SpotifyClone() {
             <>
               <section className="mb-6">
                 <div className="grid grid-cols-2 gap-2">
-                  {playlists.map((playlist, index) => (
-                    <div
-                      key={index}
-                      className="bg-gray-800 bg-opacity-40 rounded-lg p-4 flex items-center cursor-pointer"
-                      onClick={() => openPlaylist(playlist)}
+                {playlists.map((playlist) => (
+                  <div
+                    key={playlist.name}
+                    className="flex items-center space-x-3 bg-gray-800 bg-opacity-40 rounded-md p-2 cursor-pointer hover:bg-gray-600 transition-colors duration-200"
+                  >
+                    <img src={playlist.image} alt={playlist.name} className="w-10 h-10 rounded-md" />
+                    <span className="font-medium text-sm">{playlist.name}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deletePlaylist(playlist); // Call the delete function
+                      }}
+                      className="ml-auto p-1 text-red-400 hover:text-red-500"
                     >
-                      <img src={playlist.image} alt={playlist.name} className="w-12 h-12 rounded mr-3" />
-                      <span className="font-medium text-sm">{playlist.name}</span>
-                    </div>
-                  ))}
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+
                 </div>
               </section>
               <section className="mb-6">

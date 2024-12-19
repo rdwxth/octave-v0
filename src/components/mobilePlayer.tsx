@@ -37,10 +37,10 @@ interface Track {
 
 
 interface Lyric {
-  time: number;
+  time: number; // Start time in seconds
+  endTime?: number; // End time in seconds
   text: string;
 }
-
 type AudioQuality = 'MAX' | 'HIGH' | 'NORMAL' | 'DATA_SAVER';
 type RepeatMode = 'off' | 'all' | 'one';
 
@@ -356,35 +356,38 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
   useEffect(() => {
     if (!showLyrics) return;
     const lyricsContainer = lyricsRef.current;
-    if (!lyricsContainer || currentLyricIndex === -1 || userScrolling) return;
-
-    const scrollToLyric = () => {
-      const currentLyricElement = lyricsContainer.children[currentLyricIndex] as HTMLElement;
-      if (currentLyricElement) {
-        isAutoScrollingRef.current = true;
-        const elementOffset = currentLyricElement.offsetTop;
-        const elementHeight = currentLyricElement.offsetHeight;
-        const containerHeight = lyricsContainer.clientHeight;
-        const scrollPosition = elementOffset - (containerHeight / 2) + (elementHeight / 2);
-
-        if (scrollPosition >= 0) {
-          lyricsContainer.scrollTo({
-            top: scrollPosition,
-            behavior: 'smooth'
-          });
+    if (!lyricsContainer || currentLyricIndex === -1) return;
+  
+    if (!userScrolling) {
+      // Only scroll if the user is not currently scrolling manually
+      const scrollToLyric = () => {
+        const currentLyricElement = lyricsContainer.children[currentLyricIndex] as HTMLElement;
+        if (currentLyricElement) {
+          isAutoScrollingRef.current = true;
+          const elementOffset = currentLyricElement.offsetTop;
+          const elementHeight = currentLyricElement.offsetHeight;
+          const containerHeight = lyricsContainer.clientHeight;
+          const scrollPosition = elementOffset - (containerHeight / 2) + (elementHeight / 2);
+  
+          if (scrollPosition >= 0) {
+            lyricsContainer.scrollTo({
+              top: scrollPosition,
+              behavior: 'smooth',
+            });
+          }
+  
+          setTimeout(() => {
+            isAutoScrollingRef.current = false;
+          }, 1000);
         }
-
-        setTimeout(() => {
-          isAutoScrollingRef.current = false;
-        }, 1000);
-      }
-    };
-
-    setTimeout(scrollToLyric, 100);
-    return () => {
-      if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
-    };
-  }, [currentLyricIndex, userScrolling, showLyrics]);
+      };
+  
+      // Slight delay to ensure layout is stable before scrolling
+      const timeout = setTimeout(scrollToLyric, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentLyricIndex, showLyrics, userScrolling]);
+  
 
   useEffect(() => {
     const checkViewportSize = () => {
@@ -505,6 +508,30 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const processedLyrics = useMemo(() => {
+    return lyrics.map((lyric, index) => ({
+      ...lyric,
+      endTime: lyrics[index + 1]?.time || duration, // Use track duration for the last lyric
+    }));
+  }, [lyrics, duration]);
+
+  const getLyricProgress = () => {
+    if (currentLyricIndex === -1 || !processedLyrics[currentLyricIndex]) return 0;
+    
+    const currentLyric = processedLyrics[currentLyricIndex];
+    const lyricStart = currentLyric.time;
+    const lyricEnd = currentLyric.endTime;
+    const lyricDuration = lyricEnd - lyricStart;
+    
+    const elapsed = seekPosition - lyricStart;
+    const progress = Math.min(Math.max(elapsed / lyricDuration, 0), 1);
+    
+    return progress;
+  };
+  
+  const lyricProgress = getLyricProgress();
+  
 
   const mainControlButtons = (
     <div className="w-full flex items-center justify-between mb-8">
@@ -706,17 +733,49 @@ const MobilePlayer: React.FC<MobilePlayerProps> = ({
                       ref={lyricsRef}
                       style={{ height: 'calc(100% - 4rem)' }}
                     >
-                      {lyrics.map((lyric, index) => (
-                        <motion.p
-                          key={index}
-                          className={`text-lg text-center transition-all duration-300 ${
-                            index === currentLyricIndex ? 'text-white scale-105 font-bold' : 'text-white/40'
-                          }`}
-                          onClick={() => handleSeek(lyric.time)}
-                        >
-                          {lyric.text}
-                        </motion.p>
-                      ))}
+                      {processedLyrics.map((lyric, index) => {
+                        const isActive = index === currentLyricIndex;
+
+                        if (!isActive) {
+                          return (
+                            <motion.p
+                              key={index}
+                              className={`text-lg text-center transition-all duration-300 ${
+                                isActive
+                                  ? 'text-white scale-105 font-bold'
+                                  : 'text-white/40 hover:text-white opacity-50'
+                              }`}
+                              onClick={() => handleSeek(lyric.time)}
+                            >
+                              {lyric.text}
+                            </motion.p>
+                          );
+                        }
+
+                        // For the active lyric, split into letters and apply fill based on progress
+                        const letters = lyric.text.split('');
+                        const totalLetters = letters.length;
+                        const filledLetters = Math.floor(lyricProgress * totalLetters);
+
+                        return (
+                          <motion.p
+                            key={index}
+                            className="text-lg text-center font-bold text-white"
+                            onClick={() => handleSeek(lyric.time)}
+                          >
+                            {letters.map((letter, idx) => (
+                              <span
+                                key={idx}
+                                className={`transition-colors duration-300 ${
+                                  idx < filledLetters ? 'text-white' : 'text-white/40'
+                                }`}
+                              >
+                                {letter}
+                              </span>
+                            ))}
+                          </motion.p>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : showQueueUI ? (

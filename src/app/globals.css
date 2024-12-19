@@ -421,3 +421,19 @@ html {
   }
 }
 
+@keyframes fillWhite {
+  0% {
+    color: transparent;
+    background: transparent;
+  }
+  100% {
+    color: white;
+    background: transparent;
+  }
+}
+
+.fill-white-animation {
+  display: inline-block; /* Ensure each character is treated as a block */
+  animation: fillWhite 0.5s ease-in-out forwards; /* Animation duration */
+  animation-delay: 0s; /* Start immediately, customize with inline styles */
+}
