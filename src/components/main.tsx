@@ -2108,24 +2108,7 @@ export function SpotifyClone() {
             </div>
           </header>
 
-          {showLyrics ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <h2 className="text-3xl font-bold mb-4">{currentTrack?.title}</h2>
-              <p className="text-xl mb-8">{currentTrack?.artist.name}</p>
-              <div className="text-center max-h-[60vh] overflow-y-auto" ref={lyricsRef}>
-                {lyrics.map((lyric, index) => (
-                  <p
-                    key={index}
-                    className={`text-xl mb-4 ${
-                      index === currentLyricIndex ? 'text-green-500 font-bold' : 'text-gray-400'
-                    }`}
-                  >
-                    {lyric.text}
-                  </p>
-                ))}
-              </div>
-            </div>
-          ) : view === 'settings' ? (
+        {view === 'settings' ? (
             <section>
               <h2 className="text-2xl font-bold mb-4">Settings</h2>
               <div className="space-y-4">
