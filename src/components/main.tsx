@@ -26,7 +26,8 @@ import {
   Download,
   Music,
   LogOut,
-  ChevronLeft
+  ChevronLeft,
+  X
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
@@ -1774,6 +1775,7 @@ export function SpotifyClone() {
                 {/* Mobile Search Form */}
                 <div className="p-4">
                   <form onSubmit={(e) => e.preventDefault()} className="relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                     <input
                       type="text"
                       placeholder="What do you want to listen to?"
@@ -1784,45 +1786,68 @@ export function SpotifyClone() {
                         handleSearch(newQuery); // Trigger your search fetch logic
                       }}
                       className="w-full px-4 py-3 rounded-full bg-gray-800 text-white placeholder-gray-500 
-                                focus:outline-none focus:ring-2 focus:ring-green-500 pr-12 transition-all 
+                                focus:outline-none focus:ring-2 focus:ring-green-500 pl-12 transition-all 
                                 duration-200 ease-in-out"
                     />
-                    <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                   </form>
                   <div className="flex gap-2 mt-4">
-                  {(['tracks'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSearchType(type)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium 
-                        ${searchType === type 
-                          ? 'bg-white text-black' 
-                          : 'bg-gray-800 text-white hover:bg-gray-700 transition-colors duration-200'}`}
-                    >
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </button>
-                  ))}
-                </div>
-
+                    {(['tracks'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setSearchType(type)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium 
+                          ${searchType === type 
+                            ? 'bg-white text-black' 
+                            : 'bg-gray-800 text-white hover:bg-gray-700 transition-colors duration-200'}`}
+                      >
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Mobile Recent Searches (Shown if no query and we have recent searches) */}
                 {!searchQuery && recentSearches.length > 0 && (
                   <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-                    <h3 className="text-lg font-bold mb-4">Recent Searches</h3>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-white/90">Recent Searches</h3>
+                      <button
+                        onClick={() => {
+                          setRecentSearches([]);
+                          safeLocalStorageSetItem('recentSearches', JSON.stringify([]));
+                        }}
+                        className="px-4 py-2 text-sm font-medium bg-red-500 rounded hover:bg-red-600 text-white"
+                      >
+                        Clear All
+                      </button>
+                    </div>
                     <div className="space-y-2">
                       {recentSearches.map((query, index) => (
-                        <button
+                        <div
                           key={index}
-                          onClick={() => {
-                            setSearchQuery(query);
-                            handleSearch(query); // Trigger search for this recent query
-                          }}
-                          className="w-full px-4 py-3 flex items-center space-x-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors duration-200"
+                          className="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors duration-200"
                         >
-                          <Clock className="w-5 h-5 text-gray-400" />
-                          <span>{query}</span>
-                        </button>
+                          <button
+                            onClick={() => {
+                              setSearchQuery(query);
+                              handleSearch(query);
+                            }}
+                            className="flex items-center space-x-4 text-left"
+                          >
+                            <Clock className="w-5 h-5 text-purple-400" />
+                            <span className="truncate">{query}</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              const updatedSearches = recentSearches.filter((_, idx) => idx !== index);
+                              setRecentSearches(updatedSearches);
+                              safeLocalStorageSetItem('recentSearches', JSON.stringify(updatedSearches));
+                            }}
+                            className="text-red-400 hover:text-red-500"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -2245,81 +2270,137 @@ export function SpotifyClone() {
               </div>
             </section>
           ) : view === 'search' ? (
-            // **REVAMPED SEARCH VIEW (Desktop)** 
-            <section className="flex flex-col gap-8">
-              <div className="flex flex-col space-y-4">
-                <form
-                  onSubmit={(e) => e.preventDefault()}
-                  className="relative max-w-xl w-full mx-auto"
-                >
-                  <input
-                    type="text"
-                    placeholder="Search for music..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSearchQuery(val);
-                      handleSearch(val);
-                    }}
-                    className="w-full px-5 py-3 rounded-full bg-[#242424] text-white placeholder-gray-400
-                    focus:outline-none focus:bg-[#2a2a2a] focus:ring-1 focus:ring-white/20
-                    text-[15px] transition-all duration-200 ease-out search-input"
-                  />
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                </form>
-                <div className="flex gap-3 justify-center">
-                  {(['tracks'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSearchType(type)}
-                      className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200
-                        ${searchType === type 
-                          ? 'bg-white text-black hover:bg-gray-200' 
-                          : 'bg-[#2a2a2a] text-white hover:bg-[#333333]'}`}
-                    >
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {!searchQuery && recentSearches.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-bold mb-4">Recent Searches</h3>
-                  <div className="space-y-2">
-                    {recentSearches.map((query, index) => (
+            <section className="min-h-screen bg-transparent backdrop-blur-sm px-4 py-6">
+              <div className="max-w-7xl mx-auto flex flex-col gap-8">
+                {/* Search Header */}
+                <div className="flex flex-col space-y-6">
+                  <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 text-transparent bg-clip-text text-center animate-gradient">
+                    Discover Your Music
+                  </h1>
+                  
+                  {/* Search Form */}
+                  <form onSubmit={(e) => e.preventDefault()} className="w-full max-w-2xl mx-auto">
+                    <div className="relative group">
+                      <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-400 group-hover:text-pink-400 transition-colors duration-300" />
+                      <input
+                        type="text"
+                        placeholder="Search for songs, artists, or albums..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSearchQuery(val);
+                          handleSearch(val);
+                        }}
+                        className="w-full px-14 py-4 rounded-full bg-black/20 backdrop-blur-lg
+                          text-white placeholder-gray-400 border border-purple-500/20
+                          focus:outline-none focus:ring-2 focus:ring-purple-500/50
+                          text-[15px] transition-all duration-300 hover:bg-black/30"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => {
+                            setSearchQuery('');
+                            handleSearch('');
+                          }}
+                          className="absolute right-5 top-1/2 transform -translate-y-1/2 text-purple-400 
+                            hover:text-pink-400 transition-colors duration-300"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  </form>
+          
+                  {/* Filter Pills */}
+                  <div className="flex gap-3 justify-center">
+                    {(['tracks'] as const).map((type) => (
                       <button
-                        key={index}
-                        onClick={() => handleSearch(query)}
-                        className="w-full px-4 py-3 flex items-center space-x-4 bg-[#1d1d1d] 
-                          rounded-lg hover:bg-[#252525] transition-all duration-200 group"
+                        key={type}
+                        onClick={() => setSearchType(type)}
+                        className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300
+                          ${searchType === type 
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90' 
+                            : 'bg-black/20 backdrop-blur-lg text-white hover:bg-black/30 border border-purple-500/20'}`}
                       >
-                        <Clock className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" />
-                        <span className="group-hover:text-white transition-colors duration-200">{query}</span>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {searchQuery && (
-                <div>
-                  {searchResults.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-gray-400 text-lg">No results found for "{searchQuery}"</p>
-                    </div>
-                  ) : (
-                    <>
-                      <h2 className="text-2xl font-bold mb-6">Search Results</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {searchResults.map((result) => (
-                          <TrackItem key={result.id} track={result} />
+          
+                {/* Recent Searches */}
+                {!searchQuery && recentSearches.length > 0 && (
+                  <div className="animate-fadeIn">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold text-white/90">Recent Searches</h3>
+                        <button
+                          onClick={() => {
+                            setRecentSearches([]);
+                            safeLocalStorageSetItem('recentSearches', JSON.stringify([]));
+                          }}
+                          className="px-4 py-2 text-sm font-medium bg-red-500 rounded hover:bg-red-600 text-white"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {recentSearches.map((query, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors duration-200"
+                          >
+                            <button
+                              onClick={() => {
+                                setSearchQuery(query);
+                                handleSearch(query);
+                              }}
+                              className="flex items-center space-x-4 text-left"
+                            >
+                              <Clock className="w-5 h-5 text-purple-400" />
+                              <span className="truncate">{query}</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const updatedSearches = recentSearches.filter((_, idx) => idx !== index);
+                                setRecentSearches(updatedSearches);
+                                safeLocalStorageSetItem('recentSearches', JSON.stringify(updatedSearches));
+                              }}
+                              className="text-red-400 hover:text-red-500"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
                         ))}
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
+
+                  </div>
+                )}
+          
+                {/* Search Results */}
+                {searchQuery && (
+                  <div className="animate-fadeIn">
+                    {searchResults.length === 0 ? (
+                      <div className="text-center py-16">
+                        <p className="text-gray-400 text-lg">No results found for "{searchQuery}"</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-6">
+                          <h2 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 text-transparent bg-clip-text">
+                            Search Results
+                          </h2>
+                          <span className="text-sm text-purple-400">{searchResults.length} items found</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {searchResults.map((result) => (
+                            <TrackItem key={result.id} track={result} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
           ) : (
             <>
