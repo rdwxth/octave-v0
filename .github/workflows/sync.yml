@@ -1,0 +1,22 @@
+name: Sync Upstream
+
+on:
+  push:
+    paths:
+      - '.'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ github.repository }}
+          path: .
+
+      - name: Fetch and Sync Upstream
+        run: |
+          git fetch upstream
+          git checkout main
+          git rebase upstream/main
