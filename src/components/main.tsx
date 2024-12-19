@@ -110,6 +110,60 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+const getDynamicGreeting = (): string => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMonth = now.getMonth();
+  const currentDay = now.getDate();
+
+  // Seasons and special occasions
+  const isWinter = currentMonth === 11 || currentMonth <= 1; // December, January, February
+  const isSpring = currentMonth >= 2 && currentMonth <= 4; // March, April, May
+  const isSummer = currentMonth >= 5 && currentMonth <= 7; // June, July, August
+  const isAutumn = currentMonth >= 8 && currentMonth <= 10; // September, October, November
+
+  const isChristmas = currentMonth === 11 && currentDay === 25;
+  const isNewYearEve = currentMonth === 11 && currentDay === 31;
+  const isHalloween = currentMonth === 9 && currentDay === 31; // October 31
+  const isValentinesDay = currentMonth === 1 && currentDay === 14;
+
+  // Time-based greetings
+  if (isChristmas) {
+    return "Merry Christmas! Enjoy the holiday season with great music.";
+  } else if (isNewYearEve) {
+    return "Happy New Year's Eve! Start your celebration with your favorite tunes.";
+  } else if (isHalloween) {
+    return "Happy Halloween! Create a playlist to set the mood.";
+  } else if (isValentinesDay) {
+    return "Happy Valentine's Day! Let the music set the tone for today.";
+  } else if (currentHour >= 5 && currentHour < 12) {
+    if (isWinter) return "Good Morning! A perfect day to cozy up with some music.";
+    if (isSpring) return "Good Morning! Start your day fresh with some tunes.";
+    if (isSummer) return "Good Morning! Brighten your morning with uplifting tracks.";
+    if (isAutumn) return "Good Morning! A crisp day deserves a warm playlist.";
+    return "Good Morning! Let's get started with some music.";
+  } else if (currentHour >= 12 && currentHour < 17) {
+    if (isWinter) return "Good Afternoon! Warm up your day with your favorite music.";
+    if (isSpring) return "Good Afternoon! Enjoy the season with refreshing sounds.";
+    if (isSummer) return "Good Afternoon! Take a break with some relaxing tracks.";
+    if (isAutumn) return "Good Afternoon! Tune into the sounds of the season.";
+    return "Good Afternoon! The perfect time for some music.";
+  } else if (currentHour >= 17 && currentHour < 21) {
+    if (isWinter) return "Good Evening! Wind down with a relaxing playlist.";
+    if (isSpring) return "Good Evening! A calm night calls for soothing melodies.";
+    if (isSummer) return "Good Evening! Unwind with your favorite songs.";
+    if (isAutumn) return "Good Evening! End your day with some mellow tunes.";
+    return "Good Evening! Time to relax with some music.";
+  } else {
+    if (isWinter) return "Good Night! Stay warm and let the music play.";
+    if (isSpring) return "Good Night! Drift off with a calming playlist.";
+    if (isSummer) return "Good Night! A quiet night for some soft music.";
+    if (isAutumn) return "Good Night! Reflect on the day with your favorite tracks.";
+    return "Good Night! Time to relax with some music.";
+  }
+};
+
+
 export function SpotifyClone() {
   const [view, setView] = useState<'home' | 'search' | 'playlist' | 'settings' | 'library'>('home');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -153,6 +207,8 @@ export function SpotifyClone() {
   const [listenCount, setListenCount] = useState<number>(0);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false); 
   const [showPwaModal, setShowPwaModal] = useState(false);
+  const [greeting, setGreeting] = useState<string>(getDynamicGreeting());
+
 
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -176,6 +232,13 @@ export function SpotifyClone() {
       audioRef.current = new Audio();
       preloadedAudios.current = [new Audio(), new Audio(), new Audio()];
     }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGreeting(getDynamicGreeting()); // Update the greeting every hour
+    }, 3600000); // Check every hour
+    return () => clearInterval(interval); // Cleanup the interval
   }, []);
 
   const safeLocalStorageGetItem = (key: string): string | null => {
@@ -1301,8 +1364,8 @@ export function SpotifyClone() {
       {/* Mobile */}
       <div className="md:hidden flex flex-col h-[100dvh]">
         <header className="p-4 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Good morning</h1>
-          <div className="flex space-x-4">
+        <h1 className="text-xl md:text-2xl font-semibold">{greeting}</h1>
+        <div className="flex space-x-4">
             {/* Bell Icon */}
             <Bell className="w-6 h-6" />
 
@@ -1785,27 +1848,27 @@ export function SpotifyClone() {
         </aside>
         <main className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-[calc(4rem+env(safe-area-inset-bottom))] bg-gradient-to-b from-gray-900 to-black rounded-lg p-6">
           <header className="flex justify-between items-center mb-8">
-            <h1 className="text-4xl font-bold">Good morning</h1>
-            <div className="relative flex items-center">
+          <h1 className="text-xl md:text-2xl font-semibold">{greeting}</h1>
+          <div className="relative flex items-center">
             {mounted && typeof window !== 'undefined' &&
-        !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && (
-          <>
-            <button
-              className="bg-[#1a237e] text-white rounded-full px-6 py-2.5 text-sm font-semibold ml-4 
-                         transition-all duration-300 hover:bg-[#283593] hover:shadow-lg 
-                         focus:outline-none focus:ring-2 focus:ring-[#1a237e] focus:ring-offset-2"
-              onClick={() => {
-                const dp = window.deferredPrompt;
-                if (dp) {
-                  dp.prompt();
-                  dp.userChoice.then(() => {
-                    window.deferredPrompt = undefined;
-                  });
-                } else {
-                  setShowPwaModal(true);
-                }
-              }}
-            >
+            !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && (
+              <>
+                <button
+                  className="bg-[#1a237e] text-white rounded-full px-6 py-2.5 text-sm font-semibold ml-4 
+                            transition-all duration-300 hover:bg-[#283593] hover:shadow-lg 
+                            focus:outline-none focus:ring-2 focus:ring-[#1a237e] focus:ring-offset-2"
+                  onClick={() => {
+                    const dp = window.deferredPrompt;
+                    if (dp) {
+                      dp.prompt();
+                      dp.userChoice.then(() => {
+                        window.deferredPrompt = undefined;
+                      });
+                    } else {
+                      setShowPwaModal(true);
+                    }
+                  }}
+              >
               <span className="flex items-center">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
