@@ -7,7 +7,6 @@ import React, {
   useEffect,
   useRef,
   useCallback,
-  FormEvent,
   ChangeEvent,
   MouseEvent,
   useMemo
@@ -26,7 +25,7 @@ import {
   User,
   Download,
   Music,
-  LogOut
+  LogOut,
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 
@@ -63,6 +62,18 @@ interface Playlist {
 interface Lyric {
   time: number;
   text: string;
+}
+
+
+declare global {
+  interface Window {
+    deferredPrompt?: BeforeInstallPromptEvent;
+  }
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
 interface ContextMenuOption {
@@ -140,6 +151,9 @@ export function SpotifyClone() {
   const [lyrics, setLyrics] = useState<Lyric[]>([]);
   const [currentLyricIndex, setCurrentLyricIndex] = useState<number>(0);
   const [listenCount, setListenCount] = useState<number>(0);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false); 
+  const [showPwaModal, setShowPwaModal] = useState(false);
+
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const preloadedAudios = useRef<HTMLAudioElement[]>([]);
@@ -1289,9 +1303,111 @@ export function SpotifyClone() {
         <header className="p-4 flex justify-between items-center">
           <h1 className="text-3xl font-bold">Good morning</h1>
           <div className="flex space-x-4">
+            {/* Bell Icon */}
             <Bell className="w-6 h-6" />
+
+            {/* Clock Icon */}
             <Clock className="w-6 h-6" />
-            <Cog className="w-6 h-6" />
+
+            {/* Cog Icon with Dropdown */}
+            <div className="relative">
+              <button
+                className="w-6 h-6 rounded-full flex items-center justify-center"
+                onClick={() => setShowSettingsMenu((prev) => !prev)}
+              >
+                <Cog className="w-6 h-6 text-white" />
+              </button>
+
+              {showSettingsMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-[#0a1929] rounded-lg shadow-xl z-10 
+                                border border-[#1e3a5f] animate-slideIn">
+                  {/* Install App Option */}
+                  <button
+                    className="flex items-center px-4 py-2.5 text-gray-300 hover:bg-[#1a237e] w-full text-left
+                              transition-colors duration-200 group rounded-t-lg"
+                    onClick={() => {
+                      setShowSettingsMenu(false);
+                      const dp = window.deferredPrompt;
+                      if (dp) {
+                        dp.prompt();
+                        dp.userChoice.then(() => {
+                          window.deferredPrompt = undefined;
+                        });
+                      } else {
+                        setShowPwaModal(true);
+                      }
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-3 text-[#90caf9] group-hover:text-white" />
+                    Install App
+                    <span className="ml-2 bg-[#1a237e] text-xs text-white px-2 py-0.5 rounded-full">
+                      New
+                    </span>
+                  </button>
+
+                  {/* Log Out Option */}
+                  <button
+                    className="flex items-center px-4 py-2.5 text-gray-300 hover:bg-gray-700 w-full text-left
+                              rounded-b-lg"
+                    onClick={() => setShowSettingsMenu(false)}
+                  >
+                    <LogOut className="w-4 h-4 mr-3 text-white" />
+                    Log Out
+                  </button>
+                </div>
+              )}
+
+              {/* PWA Install Modal */}
+              {showPwaModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 
+                                transition-all duration-300 animate-fadeIn">
+                  <div className="bg-[#0a1929] text-white rounded-xl p-8 w-[90%] max-w-md shadow-2xl 
+                                border border-[#1e3a5f] animate-slideIn m-4">
+                    <h2 className="text-2xl font-bold text-center mb-6 text-[#90caf9]">Install App</h2>
+                    {(() => {
+                      const userAgent = navigator.userAgent || navigator.vendor;
+                      if (/android/i.test(userAgent)) {
+                        return (
+                          <div className="space-y-4">
+                            <p className="text-gray-300">For the best experience, add the app to your home screen:</p>
+                            <ol className="list-decimal ml-6 mt-2 space-y-3 text-gray-300">
+                              <li className="transition-colors duration-200 hover:text-white">Open Chrome on your Android device.</li>
+                              <li className="transition-colors duration-200 hover:text-white">Tap the <strong className="text-[#90caf9]">menu</strong> button (three vertical dots).</li>
+                              <li className="transition-colors duration-200 hover:text-white">Select <strong className="text-[#90caf9]">Add to Home Screen</strong>.</li>
+                              <li className="transition-colors duration-200 hover:text-white">Confirm by tapping <strong className="text-[#90caf9]">Add</strong>.</li>
+                            </ol>
+                          </div>
+                        );
+                      } else if (/iPad|iPhone|iPod/.test(userAgent)) {
+                        return (
+                          <div className="space-y-4">
+                            <p className="text-gray-300">For the best experience, add the app to your home screen:</p>
+                            <ol className="list-decimal ml-6 mt-2 space-y-3 text-gray-300">
+                              <li className="transition-colors duration-200 hover:text-white">Open Safari on your iOS device.</li>
+                              <li className="transition-colors duration-200 hover:text-white">Tap the <strong className="text-[#90caf9]">Share</strong> icon (a square with an arrow).</li>
+                              <li className="transition-colors duration-200 hover:text-white">Select <strong className="text-[#90caf9]">Add to Home Screen</strong>.</li>
+                              <li className="transition-colors duration-200 hover:text-white">Confirm by tapping <strong className="text-[#90caf9]">Add</strong>.</li>
+                            </ol>
+                          </div>
+                        );
+                      } else {
+                        return <p className="text-gray-300">Your platform does not support manual installation.</p>;
+                      }
+                    })()}
+                    <button
+                      onClick={() => setShowPwaModal(false)}
+                      className="mt-8 px-6 py-3 bg-[#1a237e] text-white rounded-lg w-full
+                                transition-all duration-300 hover:bg-[#283593] 
+                                focus:outline-none focus:ring-2 focus:ring-[#90caf9] focus:ring-offset-2
+                                focus:ring-offset-[#0a1929] font-semibold
+                                shadow-lg hover:shadow-xl active:transform active:scale-95"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <nav className="px-4 mb-4">
@@ -1672,22 +1788,82 @@ export function SpotifyClone() {
             <h1 className="text-4xl font-bold">Good morning</h1>
             <div className="relative flex items-center">
             {mounted && typeof window !== 'undefined' &&
-              !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && (
-                <button
-                  className="bg-white text-black rounded-full px-4 py-2 text-sm font-semibold ml-4"
-                  onClick={() => {
-                    const dp = (window as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
-                    if (dp) {
-                      dp.prompt();
-                      dp.userChoice.then(() => {
-                        (window as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt = undefined;
-                      });
+        !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && (
+          <>
+            <button
+              className="bg-[#1a237e] text-white rounded-full px-6 py-2.5 text-sm font-semibold ml-4 
+                         transition-all duration-300 hover:bg-[#283593] hover:shadow-lg 
+                         focus:outline-none focus:ring-2 focus:ring-[#1a237e] focus:ring-offset-2"
+              onClick={() => {
+                const dp = window.deferredPrompt;
+                if (dp) {
+                  dp.prompt();
+                  dp.userChoice.then(() => {
+                    window.deferredPrompt = undefined;
+                  });
+                } else {
+                  setShowPwaModal(true);
+                }
+              }}
+            >
+              <span className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Install App
+              </span>
+            </button>
+            {showPwaModal && (
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 
+                              transition-all duration-300 animate-fadeIn">
+                <div className="bg-[#0a1929] text-white rounded-xl p-8 w-[90%] max-w-md shadow-2xl 
+                              border border-[#1e3a5f] animate-slideIn">
+                  <h2 className="text-2xl font-bold text-center mb-6 text-[#90caf9]">Install App</h2>
+                  {(() => {
+                    const userAgent = navigator.userAgent || navigator.vendor;
+                    if (/android/i.test(userAgent)) {
+                      return (
+                        <div className="space-y-4">
+                          <p className="text-gray-300">For the best experience, add the app to your home screen:</p>
+                          <ol className="list-decimal ml-6 mt-2 space-y-3 text-gray-300">
+                            <li className="transition-colors duration-200 hover:text-white">Open Chrome on your Android device.</li>
+                            <li className="transition-colors duration-200 hover:text-white">Tap the <strong className="text-[#90caf9]">menu</strong> button (three vertical dots).</li>
+                            <li className="transition-colors duration-200 hover:text-white">Select <strong className="text-[#90caf9]">Add to Home Screen</strong>.</li>
+                            <li className="transition-colors duration-200 hover:text-white">Confirm by tapping <strong className="text-[#90caf9]">Add</strong>.</li>
+                          </ol>
+                        </div>
+                      );
+                    } else if (/iPad|iPhone|iPod/.test(userAgent)) {
+                      return (
+                        <div className="space-y-4">
+                          <p className="text-gray-300">For the best experience, add the app to your home screen:</p>
+                          <ol className="list-decimal ml-6 mt-2 space-y-3 text-gray-300">
+                            <li className="transition-colors duration-200 hover:text-white">Open Safari on your iOS device.</li>
+                            <li className="transition-colors duration-200 hover:text-white">Tap the <strong className="text-[#90caf9]">Share</strong> icon (a square with an arrow).</li>
+                            <li className="transition-colors duration-200 hover:text-white">Select <strong className="text-[#90caf9]">Add to Home Screen</strong>.</li>
+                            <li className="transition-colors duration-200 hover:text-white">Confirm by tapping <strong className="text-[#90caf9]">Add</strong>.</li>
+                          </ol>
+                        </div>
+                      );
+                    } else {
+                      return <p className="text-gray-300">Your platform does not support manual installation.</p>;
                     }
-                  }}
-                >
-                  Install App
-                </button>
-              )}
+                  })()}
+                  <button
+                    onClick={() => setShowPwaModal(false)}
+                    className="mt-8 px-6 py-3 bg-[#1a237e] text-white rounded-lg w-full
+                               transition-all duration-300 hover:bg-[#283593] 
+                               focus:outline-none focus:ring-2 focus:ring-[#90caf9] focus:ring-offset-2
+                               focus:ring-offset-[#0a1929] font-semibold
+                               shadow-lg hover:shadow-xl active:transform active:scale-95"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
               <div className="relative ml-4">
                 <button
