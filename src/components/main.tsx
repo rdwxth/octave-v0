@@ -2510,164 +2510,148 @@ export function SpotifyClone() {
         </footer>
       )}
 
-      {showCreatePlaylist && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black rounded-lg p-6 w-96">
-            <h2 className="text-2xl font-bold mb-4">Create Playlist</h2>
-            <input
-              type="text"
-              placeholder="Playlist Name"
-              value={newPlaylistName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPlaylistName(e.target.value)}
-              className="w-full p-2 mb-4 rounded bg-gray-700 text-white"
-            />
-            <div className="mb-4">
-              <label htmlFor="playlist-image" className="block text-sm font-medium text-gray-400 mb-2">
-                Playlist Cover Image
-              </label>
-              <div className="flex items-center justify-center w-full">
-                <label
-                  htmlFor="playlist-image"
-                  className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-700 hover:bg-gray-600"
-                >
-                  {newPlaylistImage ? (
-                    <img
-                      src={newPlaylistImage}
-                      alt="Playlist Cover"
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <svg
-                        className="w-8 h-8 mb-4 text-gray-400"
-                        aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 20 16"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
-                        />
-                      </svg>
-                      <p className="mb-2 text-sm text-gray-400">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-400">SVG, PNG, JPG or GIF</p>
-                    </div>
-                  )}
-                  <input id="playlist-image" type="file" className="hidden" onChange={handleImageUpload} accept="image/*" />
-                </label>
-              </div>
-            </div>
-            <button
-              className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mb-4"
-              onClick={() => setShowSearchInPlaylistCreation(true)}
+     {showCreatePlaylist && (
+  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-gradient-to-b from-gray-900 to-black rounded-2xl p-8 w-full max-w-md border border-gray-800">
+      <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-green-400 to-blue-500 text-transparent bg-clip-text">
+        Create Your Playlist
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Playlist Name Input */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Give your playlist a name"
+            value={newPlaylistName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPlaylistName(e.target.value)}
+            className="w-full px-5 py-4 rounded-xl bg-gray-800/50 text-white placeholder-gray-400
+                     border border-gray-700 focus:border-green-500 focus:ring-1 focus:ring-green-500
+                     transition-all duration-300 text-lg"
+          />
+        </div>
+
+        {/* Image Upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-3">
+            Choose a Cover Image
+          </label>
+          <div className="relative group">
+            <label
+              htmlFor="playlist-image"
+              className="relative flex flex-col items-center justify-center w-full aspect-square
+                       rounded-xl cursor-pointer overflow-hidden transition-all duration-300
+                       bg-gradient-to-br from-gray-800/50 to-gray-900/50
+                       group-hover:from-gray-700/50 group-hover:to-gray-800/50
+                       border-2 border-dashed border-gray-600 group-hover:border-green-500"
             >
-              Add Songs
-            </button>
-            <div className="flex justify-end space-x-2">
-              <button
-                className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
-                onClick={() => setShowCreatePlaylist(false)}
-              >
-                Cancel
-              </button>
-              <button className="px-4 py-2 bg-green-500 rounded hover:bg-green-600" onClick={createPlaylist}>
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showSearchInPlaylistCreation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black rounded-lg p-6 w-[480px] max-h-[80vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Add Songs to Playlist</h2>
-            <input
-              type="text"
-              placeholder="Search for songs..."
-              value={searchQuery}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              className="w-full p-2 mb-4 rounded bg-gray-700 text-white"
-            />
-            <div className="space-y-2 mb-4 max-h-[50vh] overflow-y-auto">
-              {searchResults.map((track) => (
-                <TrackItem key={track.id} track={track} inPlaylistCreation={true} />
-              ))}
-            </div>
-            <div className="flex justify-between items-center mt-4">
-              <p className="text-sm text-gray-400">{selectedTracksForNewPlaylist.length} songs selected</p>
-              <div className="flex space-x-2">
-                <button
-                  className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
-                  onClick={() => setShowSearchInPlaylistCreation(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="px-4 py-2 bg-green-500 rounded hover:bg-green-600"
-                  onClick={() => setShowSearchInPlaylistCreation(false)}
-                >
-                  Add Selected
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {showAddToPlaylistModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-black rounded-lg p-6 w-96">
-            <h2 className="text-2xl font-bold mb-4">Add to Playlist</h2>
-            {playlists.length === 1 ? (
-              <div>
-                <p className="mb-4">You don&apos;t have any playlists yet. Would you like to create one?</p>
-                <button
-                  className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                  onClick={() => {
-                    setShowAddToPlaylistModal(false);
-                    setShowCreatePlaylist(true);
-                  }}
-                >
-                  Create Playlist
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2 mb-4">
-                  {playlists.map((playlist, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center space-x-3 bg-gray-700 bg-opacity-30 rounded-md p-2 cursor-pointer ${
-                        selectedPlaylistForAdd === playlist.name ? 'border-2 border-green-500' : ''
-                      }`}
-                      onClick={() => setSelectedPlaylistForAdd(playlist.name)}
-                    >
-                      <img src={playlist.image} alt={playlist.name} className="w-10 h-10 rounded-md" />
-                      <p>{playlist.name}</p>
-                    </div>
-                  ))}
+              {newPlaylistImage ? (
+                <img
+                  src={newPlaylistImage}
+                  alt="Playlist Cover"
+                  className="w-full h-full object-cover absolute inset-0"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-16 h-16 mb-4 rounded-full bg-gray-700/50 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-300 mb-1">Drop your image here</p>
+                  <p className="text-xs text-gray-400">or click to browse</p>
                 </div>
-                <div className="flex justify-end space-x-2">
-                  <button
-                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
-                    onClick={() => setShowAddToPlaylistModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button className="px-4 py-2 bg-green-500 rounded hover:bg-green-600" onClick={handleAddToPlaylist}>
-                    Add
-                  </button>
-                </div>
-              </>
-            )}
+              )}
+              <input id="playlist-image" type="file" className="hidden" onChange={handleImageUpload} accept="image/*" />
+            </label>
           </div>
         </div>
-      )}
+
+        {/* Add Songs Button */}
+        <button
+          onClick={() => setShowSearchInPlaylistCreation(true)}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 
+                   hover:from-green-600 hover:to-green-700 text-white font-medium
+                   transform transition-all duration-300 hover:scale-[1.02]
+                   focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+        >
+          Add Songs
+        </button>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowCreatePlaylist(false)}
+            className="flex-1 py-3 rounded-xl border border-gray-600 text-gray-300 font-medium
+                     hover:bg-gray-800/50 transition-all duration-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={createPlaylist}
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600
+                     hover:from-blue-600 hover:to-blue-700 text-white font-medium
+                     transform transition-all duration-300 hover:scale-[1.02]"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{showSearchInPlaylistCreation && (
+  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-gradient-to-b from-gray-900 to-black rounded-2xl p-8 w-full max-w-2xl border border-gray-800">
+      <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-green-400 to-blue-500 text-transparent bg-clip-text">
+        Add Songs to Your Playlist
+      </h2>
+      
+      <div className="relative mb-6">
+        <input
+          type="text"
+          placeholder="Search for songs..."
+          value={searchQuery}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+          className="w-full px-5 py-4 rounded-xl bg-gray-800/50 text-white placeholder-gray-400
+                   border border-gray-700 focus:border-green-500 focus:ring-1 focus:ring-green-500
+                   transition-all duration-300"
+        />
+        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+      </div>
+
+      <div className="space-y-2 mb-6 max-h-[50vh] overflow-y-auto custom-scrollbar">
+        {searchResults.map((track) => (
+          <TrackItem key={track.id} track={track} inPlaylistCreation={true} />
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+        <p className="text-sm font-medium text-gray-400">
+          {selectedTracksForNewPlaylist.length} songs selected
+        </p>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowSearchInPlaylistCreation(false)}
+            className="px-6 py-3 rounded-xl border border-gray-600 text-gray-300
+                     hover:bg-gray-800/50 transition-all duration-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => setShowSearchInPlaylistCreation(false)}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600
+                     hover:from-green-600 hover:to-green-700 text-white font-medium
+                     transform transition-all duration-300 hover:scale-[1.02]"
+          >
+            Add Selected
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

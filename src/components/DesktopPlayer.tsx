@@ -326,9 +326,11 @@ export default function DesktopPlayer({
                     >
                       <Maximize2 className="w-5 h-5" />
                     </button>
+
                     <button className="p-2 rounded-full hover:bg-white/10 text-neutral-400">
-                      <Download className="w-5 h-5" />
+                      <Share className="w-5 h-5 text-white" />
                     </button>
+
                   </div>
                 </>
               )}
